@@ -37,6 +37,7 @@
     "@influxdata/influxdb-client-apis": "^1.35.0",
     "cors": "^2.8.5",
     "mongoose": "^8.14.0",
+    "mqtt": "^5.12.0",
     "zod": "^3.24.3"
   }
 }

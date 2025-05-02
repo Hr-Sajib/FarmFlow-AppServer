@@ -56,7 +56,7 @@ import { NextFunction, Request, Response } from "express";
 import httpStatus from "http-status";
 import jwt, { JwtPayload, TokenExpiredError, JsonWebTokenError } from "jsonwebtoken";
 import config from "../../config";
-import catchAsync from "../../utils/catchAsync";
+import catchAsync from "../utils/catchAsync";
 import AppError from "../errors/AppError";
 import { TUserRole } from "../modules/User/user.interface";
 import { UserModel } from "../modules/User/user.model";
