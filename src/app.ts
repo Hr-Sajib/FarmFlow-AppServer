@@ -1,7 +1,8 @@
 import express, { Application, Request, Response } from "express";
 import cors from "cors";
 import globalErrorHandler from "./app/middlewares/globalErrorhandler";
-import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
+import { UserRoutes } from "./app/modules/appData/user/user.route";
+// import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 const app: Application = express();
 const router = express.Router();
 
@@ -19,8 +20,8 @@ router.get('/', (req:Request,res:Response)=>{
   res.send('Welcome to FarmFlow app server..')
 });
 
-app.use('/', router);
-app.use('/sensorData', sensorRoutes);
+app.use('/user', UserRoutes);
+// app.use('/sensorData', sensorRoutes);
 
 
 app.use(globalErrorHandler);
