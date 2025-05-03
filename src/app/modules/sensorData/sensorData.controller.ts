@@ -5,6 +5,8 @@ import { insertSensorData, fetchAllSensorData } from './sensorData.service';
 import { ISensorData } from './sensorData.interface';
 import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
+import httpStatus from 'http-status';
+import AppError from '../../errors/AppError';
 
 // Singleton MQTT client instance
 let mqttClient: mqtt.MqttClient | null = null;
@@ -131,15 +133,29 @@ export const insertSensorDataPoint = catchAsync(
   }
 );
 
-// Fetch all sensor data
+// Fetch all sensor data, optionally filtered by farmerId and fieldId
 export const getAllSensorData = catchAsync(
   async (req: Request, res: Response) => {
-    const sensorData = await fetchAllSensorData();
+    const { farmerId, fieldId } = req.query;
+
+    // Validate that both farmerId and fieldId are provided together
+    if ((farmerId && !fieldId) || (!farmerId && fieldId)) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Both farmerId and fieldId must be provided together');
+    }
+
+    const sensorData = await fetchAllSensorData(
+      farmerId as string | undefined,
+      fieldId as string | undefined
+    );
+
+    const message = farmerId && fieldId
+      ? `Sensor data fetched successfully for farmerId=${farmerId}, fieldId=${fieldId}`
+      : 'Sensor data fetched successfully';
 
     sendResponse(res, {
       statusCode: 200,
       success: true,
-      message: 'Sensor data fetched successfully',
+      message,
       data: sensorData,
     });
   }
