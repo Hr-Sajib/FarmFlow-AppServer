@@ -1,5 +1,5 @@
 import AppError from "../../../errors/AppError";
-import { IUser } from "./user.interface";
+import { IUser, TFieldData } from "./user.interface";
 import { UserModel } from "./user.model";
 import bcrypt from "bcrypt"; // Make sure bcrypt is installed
 
@@ -64,10 +64,51 @@ import bcrypt from "bcrypt"; // Make sure bcrypt is installed
           throw new AppError(404, "User not found");
         }
       
-        // Update only the provided fields (name, email)
+        // Update scalar fields
         if (updates.name) user.name = updates.name;
         if (updates.email) user.email = updates.email;
+        if (updates.phone) user.phone = updates.phone;
       
+        // Update fieldDetails array (append or update specific elements)
+        if (updates.fieldDetails) {
+          updates.fieldDetails.forEach((newField: TFieldData) => {
+            const existingIndex = user.fieldDetails.findIndex(
+              (field) => field.fieldId === newField.fieldId
+            );
+            if (existingIndex !== -1) {
+              // Update existing field
+              user.fieldDetails[existingIndex] = newField;
+            } else {
+              // Append new field
+              user.fieldDetails.push(newField);
+            }
+          });
+          user.totalFieldsCount = user.fieldDetails.length; // Update totalFieldsCount
+        }
+      
+        await user.save();
+        return user;
+      };
+
+
+
+      const deleteFieldFromUserData = async (userEmail: string, fieldId: string) => {
+        const user = await UserModel.findOne({ email: userEmail });
+        if (!user) {
+          throw new AppError(404, "User not found");
+        }
+      
+        const initialLength = user.fieldDetails.length;
+        user.fieldDetails = user.fieldDetails.filter((field: TFieldData) => field.fieldId !== fieldId);
+        console.log("fieldArray initial length: ",initialLength);
+        console.log("user.fieldDetails after filter: ",user.fieldDetails);
+
+      
+        if (user.fieldDetails.length === initialLength) {
+          throw new AppError(404, "Field not found in fieldDetails");
+        }
+      
+        user.totalFieldsCount = user.fieldDetails.length;
         await user.save();
         return user;
       };
@@ -77,6 +118,7 @@ export const userServices = {
     createUserIntoDB,
     toggleUserStatus,
     updateUserPassword,
+    deleteFieldFromUserData,
     // getMeFromDB,
     updateUserData,
     // getAllUsersFromDB

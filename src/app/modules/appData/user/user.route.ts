@@ -10,6 +10,7 @@ router.post(
 
 router.patch("/:userId/toggle-status",userController.toggleUserStatus);
 router.patch('/update-password', userController.updatePassword);
-
+router.patch('/', userController.updateUser);
+router.delete('/field', userController.deleteFieldFromUser);
 
 export const UserRoutes = router;

@@ -81,22 +81,23 @@ import config from "../../../../config";
 
 
     const updateUser = catchAsync(async (req: Request, res: Response) => {
-        const { name, email, phone } = req.body; 
+        const { name, email, fieldDetails } = req.body;
       
-        const token = req.headers.authorization;
-        if (!token) {
-          throw new AppError(401, "No access-token provided");
-        }
+        // const token = req.headers.authorization;
+        // if (!token) {
+        //   throw new AppError(401, "No access-token provided");
+        // }
       
-        let decoded: JwtPayload;
-        try {
-          decoded = verifyToken(token, config.jwt_access_secret as string);
-        } catch (error) {
-          throw new AppError(401, "Invalid or expired token");
-        }
+        // let decoded: JwtPayload;
+        // try {
+        //   decoded = verifyToken(token, config.jwt_access_secret as string);
+        // } catch (error) {
+        //   throw new AppError(401, "Invalid or expired token");
+        // }
       
-        const updates = { name, email, phone }; // Only include provided fields
-        const updatedUser = await userServices.updateUserData(decoded.userEmail, updates);
+        const updates: Partial<IUser> = { name, email, fieldDetails }; 
+        // const updatedUser = await userServices.updateUserData(decoded.userEmail, updates);
+        const updatedUser = await userServices.updateUserData(email, updates);
       
         sendResponse(res, {
           statusCode: httpStatus.OK,
@@ -106,6 +107,39 @@ import config from "../../../../config";
         });
       });
 
+
+      const deleteFieldFromUser = catchAsync(async (req: Request, res: Response) => {
+        const { fieldId, email } = req.body; // Assuming fieldId is sent in the request body
+        if (!fieldId) {
+          throw new AppError(400, "fieldId is required");
+        }
+      
+        // const token = req.headers.authorization;
+        // if (!token) {
+        //   throw new AppError(401, "No access-token provided");
+        // }
+      
+        // let decoded: JwtPayload;
+        // try {
+        //   decoded = verifyToken(token, config.jwt_access_secret as string);
+        // } catch (error) {
+        //   throw new AppError(401, "Invalid or expired token");
+        // }
+      
+        // const updatedUser = await userServices.deleteFieldFromUserData(decoded.userEmail, fieldId);
+
+
+        console.log("email and fieldId for delete: ", email, fieldId)
+        const updatedUser = await userServices.deleteFieldFromUserData(email, fieldId);
+
+
+        sendResponse(res, {
+          statusCode: httpStatus.OK,
+          success: true,
+          message: "Field deleted successfully from user data",
+          data: updatedUser,
+        });
+      });
 
 
 
@@ -118,7 +152,8 @@ import config from "../../../../config";
     createUser,
     toggleUserStatus,
     updatePassword,
+    deleteFieldFromUser,
     // getMe,
-    // updateUser,
+    updateUser,
     // getAllUsers
   };
