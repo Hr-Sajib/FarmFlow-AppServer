@@ -59,6 +59,9 @@ userSchema.pre("save", async function (next) {
 userSchema.statics.isUserExistsByEmail = async function (email: string) {
   return await this.findOne({ email }).select("+password");
 };
+userSchema.statics.isUserExistsByPhone = async function (phone: string) {
+  return await this.findOne({ phone }).select("+password"); // 'this' refers to UserModel
+};
 
 userSchema.statics.isJWTIssuedBeforePasswordChanged = function (
   passwordChangedTimestamp: Date,

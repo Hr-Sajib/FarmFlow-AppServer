@@ -28,6 +28,7 @@ export interface IUser {
 export interface IUserModel extends Model<IUser> {
     // Static method
     isUserExistsByEmail(email: string): Promise<IUser | null>;
+    isUserExistsByPhone(phone: string): Promise<IUser | null>;
   
 
     isJWTIssuedBeforePasswordChanged(
