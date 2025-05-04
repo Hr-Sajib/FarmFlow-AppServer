@@ -9,10 +9,11 @@ router.post(
   userController.createUser,
 );
 
-router.patch("/:userId/toggle-status", auth("admin"), userController.toggleUserStatus);
-router.patch('/update-password', auth("admin","farmer"), userController.updatePassword);
-router.patch('/', auth("admin", "farmer"), userController.updateUser);
-router.delete('/field', auth("admin","farmer"), userController.deleteFieldFromUser);
-router.delete('/addField', auth("admin","farmer"), userController.addFieldToUser);
+router.patch("/toggle-status/:userId", auth("admin"), userController.toggleUserStatus);
+router.patch('/update-password/:userId', auth("admin","farmer"), userController.updatePassword);
+router.patch('/:userId', auth("admin", "farmer"), userController.updateUser);
+router.delete('/deleteField/:userId', auth("admin","farmer"), userController.deleteFieldFromUser);
+router.post('/addField/:userId', auth("admin","farmer"), userController.addFieldToUser);
+router.patch('/updateField/:userId/:fieldId', auth("admin","farmer"), userController.updateField);
 
 export const UserRoutes = router;

@@ -11,7 +11,7 @@ import { UserModel } from "../modules/appData/user/user.model";
 
 
 const auth = (...requiredRoles: TUserRole[]) => {
-  // console.log("Roles received in auth.ts: ", requiredRoles)
+  console.log("auth reached..",)
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     let token = req.headers.authorization;
 
