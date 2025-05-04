@@ -3,16 +3,30 @@ import { IUser, TFieldData } from "./user.interface";
 import { UserModel } from "./user.model";
 import httpStatus from "http-status";
 import bcrypt from "bcrypt";
+import { generateFarmerId } from "../../../utils/generateFarmerId";
 
 const createUserIntoDB = async (payload: IUser) => {
-  const newUser = await UserModel.create(payload);
+  const farmerId = await generateFarmerId();
+  const totalFieldsCount = payload.fieldDetails? payload.fieldDetails.length : 0;
+
+  const insertingData = {...payload, farmerId:farmerId, totalFieldsCount: totalFieldsCount}
+
+  const newUser = await UserModel.create(insertingData);
   if (!newUser) {
     throw new AppError(400, "ইউজার সফলভাবে তৈরি হয়নি! ");
   }
   return newUser;
 };
 
+
+
+
+
+
+
+
 const toggleUserStatus = async (userId: string) => {
+  generateFarmerId();
   const user = await UserModel.findById(userId);
   if (!user) {
     throw new AppError(404, "User not found!");
