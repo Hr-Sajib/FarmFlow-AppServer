@@ -29,15 +29,18 @@ import config from "../../../../config";
 
 
     const toggleUserStatus = catchAsync(async (req: Request, res: Response) => {
-    const { userId } = req.params;
-    const updatedUser = await userServices.toggleUserStatus(userId);
-  
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: `User status updated to ${updatedUser.status}`,
-      data: updatedUser,
-    });
+      console.log("hit ctrl ")
+
+      const { userId } = req.params;
+      
+      const updatedUser = await userServices.toggleUserStatus(userId);
+    
+      sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: `User status updated to ${updatedUser.status}`,
+        data: updatedUser,
+      });
     });
 
 
@@ -83,21 +86,18 @@ import config from "../../../../config";
     const updateUser = catchAsync(async (req: Request, res: Response) => {
         const { name, email, fieldDetails } = req.body;
       
-        // const token = req.headers.authorization;
-        // if (!token) {
-        //   throw new AppError(401, "No access-token provided");
-        // }
+        const token = req.headers.authorization;
       
-        // let decoded: JwtPayload;
-        // try {
-        //   decoded = verifyToken(token, config.jwt_access_secret as string);
-        // } catch (error) {
-        //   throw new AppError(401, "Invalid or expired token");
-        // }
+        let decoded: JwtPayload;
+        try {
+          decoded = verifyToken(token!, config.jwt_access_secret as string);
+        } catch (error) {
+          throw new AppError(401, "Invalid or expired token");
+        }
       
         const updates: Partial<IUser> = { name, email, fieldDetails }; 
-        // const updatedUser = await userServices.updateUserData(decoded.userEmail, updates);
-        const updatedUser = await userServices.updateUserData(email, updates);
+        const updatedUser = await userServices.updateUserData(decoded.userPhone, updates);
+
       
         sendResponse(res, {
           statusCode: httpStatus.OK,
@@ -109,29 +109,24 @@ import config from "../../../../config";
 
 
       const deleteFieldFromUser = catchAsync(async (req: Request, res: Response) => {
-        const { fieldId, email } = req.body; // Assuming fieldId is sent in the request body
+        const { fieldId } = req.body;
         if (!fieldId) {
           throw new AppError(400, "fieldId is required");
         }
       
-        // const token = req.headers.authorization;
-        // if (!token) {
-        //   throw new AppError(401, "No access-token provided");
-        // }
+        const token = req.headers.authorization;
+        if (!token) {
+          throw new AppError(401, "No access-token provided");
+        }
       
-        // let decoded: JwtPayload;
-        // try {
-        //   decoded = verifyToken(token, config.jwt_access_secret as string);
-        // } catch (error) {
-        //   throw new AppError(401, "Invalid or expired token");
-        // }
+        let decoded: JwtPayload;
+        try {
+          decoded = verifyToken(token, config.jwt_access_secret as string);
+        } catch (error) {
+          throw new AppError(401, "Invalid or expired token");
+        }
       
-        // const updatedUser = await userServices.deleteFieldFromUserData(decoded.userEmail, fieldId);
-
-
-        console.log("email and fieldId for delete: ", email, fieldId)
-        const updatedUser = await userServices.deleteFieldFromUserData(email, fieldId);
-
+        const updatedUser = await userServices.deleteFieldFromUserData(decoded.userPhone, fieldId);
 
         sendResponse(res, {
           statusCode: httpStatus.OK,
@@ -139,6 +134,36 @@ import config from "../../../../config";
           message: "Field deleted successfully from user data",
           data: updatedUser,
         });
+      });
+
+
+      const addFieldToUser = catchAsync( async (req: Request, res: Response) => {
+
+        const token = req.headers.authorization;
+        if (!token) {
+          throw new AppError(401, "No access-token provided");
+        }
+        let decoded: JwtPayload;
+        try {
+          decoded = verifyToken(token, config.jwt_access_secret as string);
+        } catch (error) {
+          throw new AppError(401, "Invalid or expired token");
+        }
+
+
+        const {fieldData} = req.body;
+        if(!fieldData){
+          throw new AppError(401, "No field data provided");
+        }
+
+        const updatedUser = await userServices.addFieldToUserData(decoded.userPhone, fieldData);
+        sendResponse(res, {
+          statusCode: httpStatus.OK,
+          success: true,
+          message: "Field deleted successfully from user data",
+          data: updatedUser,
+        });
+
       });
 
 
@@ -153,6 +178,7 @@ import config from "../../../../config";
     toggleUserStatus,
     updatePassword,
     deleteFieldFromUser,
+    addFieldToUser,
     // getMe,
     updateUser,
     // getAllUsers

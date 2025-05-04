@@ -58,8 +58,8 @@ import bcrypt from "bcrypt"; // Make sure bcrypt is installed
     };
 
 
-    const updateUserData = async (userEmail: string, updates: Partial<IUser>) => {
-        const user = await UserModel.findOne({ email: userEmail });
+    const updateUserData = async (userPhone: string, updates: Partial<IUser>) => {
+        const user = await UserModel.findOne({ phone: userPhone });
         if (!user) {
           throw new AppError(404, "User not found");
         }
@@ -67,7 +67,6 @@ import bcrypt from "bcrypt"; // Make sure bcrypt is installed
         // Update scalar fields
         if (updates.name) user.name = updates.name;
         if (updates.email) user.email = updates.email;
-        if (updates.phone) user.phone = updates.phone;
       
         // Update fieldDetails array (append or update specific elements)
         if (updates.fieldDetails) {
@@ -92,26 +91,39 @@ import bcrypt from "bcrypt"; // Make sure bcrypt is installed
 
 
 
-      const deleteFieldFromUserData = async (userEmail: string, fieldId: string) => {
-        const user = await UserModel.findOne({ email: userEmail });
-        if (!user) {
-          throw new AppError(404, "User not found");
-        }
-      
-        const initialLength = user.fieldDetails.length;
-        user.fieldDetails = user.fieldDetails.filter((field: TFieldData) => field.fieldId !== fieldId);
-        console.log("fieldArray initial length: ",initialLength);
-        console.log("user.fieldDetails after filter: ",user.fieldDetails);
+    const deleteFieldFromUserData = async (userPhone: string, fieldId: string) => {
+      const user = await UserModel.findOne({ phone: userPhone });
+      if (!user) {
+        throw new AppError(404, "User not found");
+      }
+    
+      const initialLength = user.fieldDetails.length;
+      user.fieldDetails = user.fieldDetails.filter((field: TFieldData) => field.fieldId !== fieldId);
+      // console.log("fieldArray initial length: ",initialLength);
+      // console.log("user.fieldDetails after filter: ",user.fieldDetails);
+    
+      if (user.fieldDetails.length === initialLength) {
+        throw new AppError(404, "Field not found in fieldDetails");
+      }
+    
+      user.totalFieldsCount = user.fieldDetails.length;
+      await user.save();
+      return user;
+    };
 
-      
-        if (user.fieldDetails.length === initialLength) {
-          throw new AppError(404, "Field not found in fieldDetails");
-        }
-      
-        user.totalFieldsCount = user.fieldDetails.length;
-        await user.save();
-        return user;
-      };
+  
+    const addFieldToUserData = async (userPhone: string, fieldData: TFieldData) => {
+      const user = await UserModel.findOne({ phone: userPhone });
+      if (!user) {
+        throw new AppError(404, "User not found");
+      }
+    
+      const newFieldsArray = {...user.fieldDetails,fieldData};
+    
+      user.totalFieldsCount = newFieldsArray.length;
+      await user.save();
+      return user;
+    };
 
   
 export const userServices = {
@@ -119,6 +131,7 @@ export const userServices = {
     toggleUserStatus,
     updateUserPassword,
     deleteFieldFromUserData,
+    addFieldToUserData,
     // getMeFromDB,
     updateUserData,
     // getAllUsersFromDB

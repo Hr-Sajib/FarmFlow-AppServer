@@ -1,4 +1,5 @@
 import { Model } from "mongoose";
+import { USER_ROLE } from "./user.constant";
 
 // user.interface.ts 
 export type TFieldData = {
@@ -36,3 +37,6 @@ export interface IUserModel extends Model<IUser> {
       jwtIssuedTimestamp: number
     ): boolean;
   }
+
+
+  export type TUserRole = keyof typeof USER_ROLE;
