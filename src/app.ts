@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser'; // Import cookie-parser
 import globalErrorHandler from "./app/middlewares/globalErrorhandler";
 import { UserRoutes } from "./app/modules/appData/user/user.route";
 import { AuthRoutes } from "./app/modules/appData/auth/auth.route";
+import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 // import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 const app: Application = express();
 const router = express.Router();
@@ -24,7 +25,7 @@ router.get('/', (req:Request,res:Response)=>{
 
 app.use('/user', UserRoutes);
 app.use('/auth', AuthRoutes);
-// app.use('/sensorData', sensorRoutes);
+app.use('/sensorData', sensorRoutes);
 
 
 app.use(globalErrorHandler);

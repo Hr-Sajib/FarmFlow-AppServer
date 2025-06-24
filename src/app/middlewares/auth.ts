@@ -6,12 +6,10 @@ import jwt, { JwtPayload, TokenExpiredError, JsonWebTokenError } from "jsonwebto
 import config from "../../config";
 import catchAsync from "../utils/catchAsync";
 import AppError from "../errors/AppError";
-import { TUserRole } from "../modules/appData/user/user.interface";
 import { UserModel } from "../modules/appData/user/user.model";
 
 
-const auth = (...requiredRoles: TUserRole[]) => {
-  console.log("auth reached..",)
+const auth = (...requiredRoles: string[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     let token = req.headers.authorization;
 
@@ -40,9 +38,13 @@ const auth = (...requiredRoles: TUserRole[]) => {
     const { role, userPhone } = decoded;
 
     // Check if user exists
-    const user = await UserModel.isUserExistsByPhone(userPhone);
+    const user = await UserModel.findOne({phone:userPhone}).select("+password");
+
     if (!user) {
       throw new AppError(httpStatus.NOT_FOUND, "User not found in auth middleware");
+    }
+    if (user.isDeleted == true) {
+      throw new AppError(httpStatus.NOT_FOUND, "User is deleted!");
     }
 
 

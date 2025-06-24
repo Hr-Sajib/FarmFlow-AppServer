@@ -17,6 +17,7 @@ export type TReaction = {
 
 export type TComment = {
     commenterName: string;
-    commenterId: Types.ObjectId; 
+    commenterId: Types.ObjectId;
     commentText: string;
+    _id?: Types.ObjectId; // Added as optional to match Mongoose subdocument
 }

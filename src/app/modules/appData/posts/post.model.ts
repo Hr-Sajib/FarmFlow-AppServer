@@ -1,4 +1,4 @@
-import { Schema, model, Model, SchemaTypes } from "mongoose"; // Changed from Types to SchemaTypes
+import { Schema, model, Model, SchemaTypes } from "mongoose"; 
 import { IPost, TReaction, TComment } from "./post.interface";
 
 // Reaction schema (nested within Post)
@@ -10,7 +10,7 @@ const reactionSchema = new Schema<TReaction>({
 // Comment schema (nested within Post)
 const commentSchema = new Schema<TComment>({
   commenterName: { type: String },
-  commenterId: { type: SchemaTypes.ObjectId, ref: "User" }, // Changed to SchemaTypes.ObjectId
+  commenterId: { type: SchemaTypes.ObjectId, ref: "User" },
   commentText: { type: String },
 });
 
@@ -18,7 +18,7 @@ const commentSchema = new Schema<TComment>({
 const postSchema = new Schema<IPost>(
   {
     creatorName: { type: String },
-    creatorId: { type: SchemaTypes.ObjectId, ref: "User" }, // Changed to SchemaTypes.ObjectId
+    creatorId: { type: SchemaTypes.ObjectId, ref: "User" }, 
     postText: { type: String },
     postImages: { type: [String], default: [] },
     reactions: { type: reactionSchema, default: { likes: 0, dislikes: 0 } },
@@ -26,9 +26,9 @@ const postSchema = new Schema<IPost>(
     aboutCrop: { type: String },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt fields
+    timestamps: true, 
   }
 );
 
-// Create and export the Post model
+
 export const PostModel: Model<IPost> = model<IPost>("Post", postSchema);

@@ -1,125 +1,94 @@
 import AppError from "../../../errors/AppError";
-import { IUser, TFieldData } from "./user.interface";
+import { IUser } from "./user.interface";
 import { UserModel } from "./user.model";
 import httpStatus from "http-status";
 import bcrypt from "bcrypt";
 import { generateFarmerId } from "../../../utils/generateFarmerId";
+import config from "../../../../config";
 
+// Create a new user in the database
 const createUserIntoDB = async (payload: IUser) => {
   const farmerId = await generateFarmerId();
-  const totalFieldsCount = payload.fieldDetails? payload.fieldDetails.length : 0;
-
-  const insertingData = {...payload, farmerId:farmerId, totalFieldsCount: totalFieldsCount}
+  const insertingData = { ...payload, farmerId };
 
   const newUser = await UserModel.create(insertingData);
   if (!newUser) {
-    throw new AppError(400, "ইউজার সফলভাবে তৈরি হয়নি! ");
+    throw new AppError(400, "Failed to create user!");
   }
   return newUser;
 };
 
+const getAllUsersFromDB = async () => {
 
+  const allUsers = await UserModel.find();
+  if (!allUsers) {
+    throw new AppError(400, "Failed to fetch users!");
+  }
+  return allUsers;
+};
 
+const getUserByIdFromDB = async (userId: string) => {
 
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new AppError(400, "Failed to fetch user!");
+  }
+  return user;
+};
 
-
-
-
+// Toggle user status between active and blocked
 const toggleUserStatus = async (userId: string) => {
-  generateFarmerId();
   const user = await UserModel.findById(userId);
   if (!user) {
     throw new AppError(404, "User not found!");
   }
 
   const newStatus = user.status === "active" ? "blocked" : "active";
-  user.status = newStatus;
-  await user.save();
+  const updatedUser = await UserModel.findByIdAndUpdate(
+    userId,
+    { $set: { status: newStatus } },
+    { new: true }
+  );
+  if (!updatedUser) {
+    throw new AppError(500, "Failed to update user status!");
+  }
 
-  return user;
+  return updatedUser;
 };
 
-const updateUserData = async (userId: string, userPhone: string, updates: Partial<IUser>) => {
+// Update user data
+const updateUserData = async (role:string,userId: string, userPhone: string, updates: Partial<IUser>) => {
   // Find the target user by userId
   const userData = await UserModel.findById(userId);
   if (!userData) {
-    throw new AppError(404, "Target user not found");
+    throw new AppError(404, "User not found!");
   }
 
-  // Compare the phone numbers
-  if (userData.phone !== userPhone) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Param ID and login access token do not match");
+  if(role !== "admin" && userData.phone !== userPhone){
+      throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Parameter ID and login access token do not match!");
   }
 
-  // Update scalar fields
-  if (updates.name) userData.name = updates.name;
-  if (updates.email) userData.email = updates.email;
 
-  // Update fieldDetails array (append or update specific elements)
-  if (updates.fieldDetails) {
-    updates.fieldDetails.forEach((newField: TFieldData) => {
-      const existingIndex = userData.fieldDetails.findIndex(
-        (field) => field.fieldId === newField.fieldId
-      );
-      if (existingIndex !== -1) {
-        userData.fieldDetails[existingIndex] = newField;
-      } else {
-        userData.fieldDetails.push(newField);
-      }
-    });
-    userData.totalFieldsCount = userData.fieldDetails.length;
+
+  // Prepare update object for $set
+  const updateFields: Partial<IUser> = {};
+  if (updates.name) updateFields.name = updates.name;
+  if (updates.email) updateFields.email = updates.email;
+  if (updates.address) updateFields.address = updates.address;
+
+  const updatedUser = await UserModel.findByIdAndUpdate(
+    userId,
+    { $set: updateFields },
+    { new: true }
+  );
+  if (!updatedUser) {
+    throw new AppError(500, "Failed to update user data!");
   }
 
-  await userData.save();
-  return userData;
+  return updatedUser;
 };
 
-const deleteFieldFromUserData = async (userId: string, userPhone: string, fieldId: string) => {
-  // Find the target user by userId
-  const userData = await UserModel.findById(userId);
-  if (!userData) {
-    throw new AppError(404, "Target user not found");
-  }
-
-  // Compare the phone numbers
-  if (userData.phone !== userPhone) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Param ID and login access token do not match");
-  }
-
-  const initialLength = userData.fieldDetails.length;
-  userData.fieldDetails = userData.fieldDetails.filter((field: TFieldData) => field.fieldId !== fieldId);
-
-  if (userData.fieldDetails.length === initialLength) {
-    throw new AppError(404, "Field not found in fieldDetails");
-  }
-
-  userData.totalFieldsCount = userData.fieldDetails.length;
-  await userData.save();
-  return userData;
-};
-
-const addFieldToUserData = async (userId: string, userPhone: string, fieldData: TFieldData) => {
-  // Find the target user by userId
-  const userData = await UserModel.findById(userId);
-  if (!userData) {
-    throw new AppError(404, "Target user not found");
-  }
-
-  // Compare the phone numbers
-  if (userData.phone !== userPhone) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Param ID and login access token do not match");
-  }
-
-  // Append the new fieldData to fieldDetails array
-  userData.fieldDetails.push(fieldData);
-  userData.totalFieldsCount = userData.fieldDetails.length;
-
-  await userData.save();
-  return userData;
-};
-
-
-
+// Update user password
 const updateUserPassword = async (
   userId: string,
   userPhone: string,
@@ -128,80 +97,67 @@ const updateUserPassword = async (
   newPassword: string
 ) => {
   // Find the target user by userId
-  const userData = await UserModel.findById(userId);
+  const userData = await UserModel.findById(userId).select("+password");
   if (!userData) {
-    throw new AppError(404, "Target user not found");
+    throw new AppError(404, "User not found!");
   }
 
-  // Compare the phone numbers
-
-
-  // Skip old password check & phone check if role is admin
+  // Skip old password check and phone check if role is admin
   if (role !== "admin") {
     if (userData.phone !== userPhone) {
-      throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Param ID and login access token do not match");
+      throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Parameter ID and login access token do not match!");
     }
 
     if (!oldPassword) {
-      throw new AppError(400, "Old password is required");
+      throw new AppError(400, "Old password is required!");
     }
     const isOldPasswordCorrect = await bcrypt.compare(oldPassword, userData.password);
     if (!isOldPasswordCorrect) {
-      throw new AppError(401, "আগের পাসওয়ার্ড সঠিক হয়নি!");
+      throw new AppError(401, "Old password is incorrect!");
     }
   }
 
-  // Set the new password
-  userData.password = newPassword;
-  userData.passwordChangedAt = new Date();
-  await userData.save();
+  // Hash the new password
+  const hashedPassword = await bcrypt.hash(newPassword, Number(config.bcrypt_salt_rounds));
 
-  return { message: "Password updated successfully" };
+  // Update password and passwordChangedAt using $set
+  const updatedUser = await UserModel.findByIdAndUpdate(
+    userId,
+    { $set: { password: hashedPassword, passwordChangedAt: new Date() } },
+    { new: true, select: "-password" }
+  );
+  if (!updatedUser) {
+    throw new AppError(500, "Failed to update password!");
+  }
+
+  return updatedUser;
 };
 
-const updateFieldData = async (
-  userId: string,
-  fieldId: string,
-  userPhone: string,
-  role: string,
-  fieldData: TFieldData
-) => {
-  // Find the target user by userId
-  const userData = await UserModel.findById(userId);
-  if (!userData) {
-    throw new AppError(404, "Target user not found");
+
+const softDeleteUserInDB = async (userId: string) => {
+  const user = await UserModel.findById(userId).where({ isDeleted: false });
+  if (!user) {
+    throw new AppError(404, "User not found!");
   }
 
-  // Skip phone check if role is admin
-  if (role !== "admin") {
-    if (userData.phone !== userPhone) {
-      throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Param ID and login access token do not match");
-    }
+  const updatedUser = await UserModel.findByIdAndUpdate(
+    userId,
+    { $set: { isDeleted: true } },
+    { new: true }
+  );
+  if (!updatedUser) {
+    throw new AppError(500, "Failed to delete user!");
   }
 
-  // Find the field to update
-  const fieldIndex = userData.fieldDetails.findIndex((field: TFieldData) => field.fieldId === fieldId);
-  if (fieldIndex === -1) {
-    throw new AppError(404, "Field not found in fieldDetails");
-  }
-
-  // Exclude fieldId from the incoming fieldData to prevent updating it
-  const { fieldId: _, ...updatableFieldData } = fieldData;
-
-  // Update the field data, preserving the original fieldId
-  userData.fieldDetails[fieldIndex] = { ...userData.fieldDetails[fieldIndex], ...updatableFieldData };
-  userData.totalFieldsCount = userData.fieldDetails.length;
-
-  await userData.save();
-  return userData;
+  return updatedUser;
 };
 
 export const userServices = {
   createUserIntoDB,
   toggleUserStatus,
-  deleteFieldFromUserData,
-  addFieldToUserData,
   updateUserData,
   updateUserPassword,
-  updateFieldData
+  softDeleteUserInDB,
+  getAllUsersFromDB,
+  getUserByIdFromDB
 };

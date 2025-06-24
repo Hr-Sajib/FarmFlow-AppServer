@@ -1,42 +1,41 @@
 import { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
 import config from "../../../../config/index";
-import { IUser, TFieldData, IUserModel } from "./user.interface";
-
-// Define the FieldData schema
-const fieldDataSchema = new Schema<TFieldData>(
-  {
-    fieldId: { type: String, trim: true },
-    fieldName: { type: String, trim: true },
-    cropName: { type: String, trim: true },
-    fieldArea: { type: Number },
-    fieldLocation: {
-      type: {
-        latitude: { type: Number },
-        longitude: { type: Number },
-      },
-    },
-  },
-  { _id: false }
-);
+import { IUser } from "./user.interface";
 
 // Define the User schema
 const userSchema = new Schema<IUser>(
   {
-    name: { type: String, trim: true },
-    farmerId: { type: String, trim: true },
-    email: { type: String, lowercase: true, trim: true }, // No unique constraint
+    name: { type: String, trim: true, required: [true, "Name is required"] },
+    farmerId: { type: String, trim: true, required: [true, "Farmer ID is required"] },
+    email: { type: String, lowercase: true, trim: true },
     phone: {
       type: String,
       trim: true,
-      unique: [true, "ফোন নাম্বারটি অলরেডি ব্যবহৃত হচ্ছে, ইউনিক নাম্বার দিন!"],
+      required: [true, "Phone number is required"],
+      unique: [true, "Phone number is already in use, please provide a unique number!"],
     },
-    password: { type: String },
+    password: { type: String, required: [true, "Password is required"], select: false },
+    address: { type: String, trim: true, required: [true, "Address is required"] },
     passwordChangedAt: { type: Date, default: null },
-    role: { type: String },
-    status: { type: String, default: "active" },
-    totalFieldsCount: { type: Number },
-    fieldDetails: { type: [fieldDataSchema] },
+    role: {
+      type: String,
+      enum: {
+        values: ["admin", "farmer"],
+        message: "Role must be either 'admin' or 'farmer'",
+      },
+      default:"farmer",
+    },
+    status: {
+      type: String,
+      enum: {
+        values: ["active", "blocked"],
+        message: "Status must be either 'active' or 'blocked'",
+      },
+      default: "active",
+    },
+    fieldIds: [{ type: Schema.Types.ObjectId, ref: "Field" }],
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,
@@ -55,21 +54,5 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// Define static methods
-userSchema.statics.isUserExistsByEmail = async function (email: string) {
-  return await this.findOne({ email }).select("+password");
-};
-userSchema.statics.isUserExistsByPhone = async function (phone: string) {
-  return await this.findOne({ phone }).select("+password"); // 'this' refers to UserModel
-};
-
-userSchema.statics.isJWTIssuedBeforePasswordChanged = function (
-  passwordChangedTimestamp: Date,
-  jwtIssuedTimestamp: number
-): boolean {
-  const passwordChangedTime = new Date(passwordChangedTimestamp).getTime() / 1000;
-  return passwordChangedTime > jwtIssuedTimestamp;
-};
-
 // Export the Mongoose model
-export const UserModel = model<IUser, IUserModel>("User", userSchema);
+export const UserModel = model<IUser>("User", userSchema);

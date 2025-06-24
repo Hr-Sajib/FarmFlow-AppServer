@@ -11,7 +11,7 @@ const loginUserIntoDB = async (payload: TLoginUser) => {
   const { phone, password } = payload;
 
   // Fetch user by phone
-  const user = await UserModel.isUserExistsByPhone(phone!);
+  const user = await UserModel.findOne({phone}).select("+password");
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
@@ -54,7 +54,7 @@ const refreshToken = async (token: string) => {
   const { userEmail, userPhone } = decoded;
 
   // Check if the user exists using either email or phone
-  const user = await UserModel.isUserExistsByPhone(userPhone);
+  const user = await UserModel.findOne({userPhone});
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
