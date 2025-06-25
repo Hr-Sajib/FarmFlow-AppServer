@@ -102,6 +102,35 @@ const dislikePost = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Remove a like from a post
+const removeLikeFromPost = catchAsync(async (req: Request, res: Response) => {
+  const { postId } = req.params;
+  const userPhone = req.user.userPhone;
+
+  const updatedPost = await postServices.removeLikeFromPost(postId, userPhone);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Like removed successfully",
+    data: updatedPost,
+  });
+});
+
+// Remove a dislike from a post
+const removeDislikeFromPost = catchAsync(async (req: Request, res: Response) => {
+  const { postId } = req.params;
+  const userPhone = req.user.userPhone;
+
+  const updatedPost = await postServices.removeDislikeFromPost(postId, userPhone);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Dislike removed successfully",
+    data: updatedPost,
+  });
+});
 // Get all posts
 const getAllPosts = catchAsync(async (req: Request, res: Response) => {
   const posts = await postServices.getAllPostsFromDB();
@@ -140,4 +169,6 @@ export const postController = {
   dislikePost,
   getAllPosts,
   getPostById,
+  removeDislikeFromPost,
+  removeLikeFromPost
 };

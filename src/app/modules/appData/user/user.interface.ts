@@ -5,6 +5,7 @@ export interface IUser {
   farmerId: string;
   email?: string;
   phone: string;
+  photo: string;
   password: string;
   address: string;
   passwordChangedAt?: Date;

@@ -8,7 +8,7 @@ const router = express.Router();
 
 // Create a post
 router.post(
-  "/create",
+  "/",
   auth("admin", "farmer"),
   validateRequest(PostValidation.createPostValidationSchema),
   postController.createPost
@@ -26,13 +26,15 @@ router.patch(
 router.delete("/:postId", auth("admin", "farmer"), postController.deletePost);
 
 // Add a comment to a post
-router.post("/:postId/comment", auth("admin", "farmer"), postController.addComment);
+router.post("/comment/:postId", auth("admin", "farmer"), postController.addComment);
 
 // Like a post
-router.post("/:postId/like", auth("admin", "farmer"), postController.likePost);
+router.post("/like/:postId", auth("admin", "farmer"), postController.likePost);
+router.post("/removeLike/:postId", auth("admin", "farmer"), postController.removeLikeFromPost);
 
 // Dislike a post
-router.post("/:postId/dislike", auth("admin", "farmer"), postController.dislikePost);
+router.post("/dislike/:postId", auth("admin", "farmer"), postController.dislikePost);
+router.post("/removeDislike/:postId", auth("admin", "farmer"), postController.removeDislikeFromPost);
 
 // Read all posts
 router.get("/", auth("admin", "farmer"), postController.getAllPosts);

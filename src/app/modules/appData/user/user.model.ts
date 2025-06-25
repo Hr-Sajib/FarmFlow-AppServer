@@ -16,6 +16,7 @@ const userSchema = new Schema<IUser>(
       unique: [true, "Phone number is already in use, please provide a unique number!"],
     },
     password: { type: String, required: [true, "Password is required"], select: false },
+    photo: { type: String ,trim: true},
     address: { type: String, trim: true, required: [true, "Address is required"] },
     passwordChangedAt: { type: Date, default: null },
     role: {

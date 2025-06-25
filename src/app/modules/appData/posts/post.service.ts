@@ -12,9 +12,16 @@ const createPost = async (postData: IPost, userPhone: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  postData.creatorId = user._id;
+  const post = {
+    creatorName: user.name,
+    creatorId: user._id,
+    postText: postData.postText,
+    postImages: postData.postImages,
+    postTopic: postData.postTopic
+  }
 
-  const newPost = await PostModel.create(postData);
+
+  const newPost = await PostModel.create(post);
   return newPost;
 };
 
@@ -75,15 +82,23 @@ const addComment = async (postId: string,userPhone: string, commentData:TComment
   }
 
   // Find the user by commenterId and ensure not deleted
-  const user = await UserModel.find({phone: userPhone}).where({ isDeleted: false });
+  const user = await UserModel.findOne({phone: userPhone});
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
 
+  const commentInput = {
+    commenterName: user.name,
+    commenterId: user._id,
+    commentText: commentData.commentText,
+  }
+
+  console.log("conmment : ",commentInput)
+
 
   const updatedPost = await PostModel.findByIdAndUpdate(
     postId,
-    { $push: { comments: commentData } },
+    { $push: { comments: commentInput } },
     { new: true }
   );
 
@@ -111,6 +126,9 @@ const likePost = async (postId: string, userPhone: string) => {
   // Check if user has already liked the post
   if (post.reactions.likes.by.includes(user._id)) {
     throw new AppError(httpStatus.BAD_REQUEST, "You already liked this post!");
+  }
+  if (post.reactions.dislikes.by.includes(user._id)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You already disliked this post!");
   }
 
   // Update likes count and add user ID to likes.by
@@ -142,8 +160,11 @@ const dislikePost = async (postId: string, userPhone: string) => {
   }
 
   // Check if user has already liked the post
-  if (post.reactions.likes.by.includes(user._id)) {
+  if (post.reactions.dislikes.by.includes(user._id)) {
     throw new AppError(httpStatus.BAD_REQUEST, "You already disliked this post!");
+  }
+  if (post.reactions.likes.by.includes(user._id)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You already liked this post!");
   }
 
   // Update likes count and add user ID to likes.by
@@ -158,6 +179,68 @@ const dislikePost = async (postId: string, userPhone: string) => {
 
   if (!updatedPost) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to dislike post!");
+  }
+
+  return updatedPost;
+};
+
+const removeLikeFromPost = async (postId: string, userPhone: string) => {
+  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
+  }
+
+  const post = await PostModel.findById(postId);
+  if (!post) {
+    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
+  }
+
+  if (!post.reactions.likes.by.includes(user._id)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You have not liked this post!");
+  }
+
+  const updatedPost = await PostModel.findByIdAndUpdate(
+    postId,
+    {
+      $inc: { "reactions.likes.count": -1 },
+      $pull: { "reactions.likes.by": user._id },
+    },
+    { new: true }
+  );
+
+  if (!updatedPost) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to remove like from post!");
+  }
+
+  return updatedPost;
+};
+
+const removeDislikeFromPost = async (postId: string, userPhone: string) => {
+  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
+  }
+
+  const post = await PostModel.findById(postId);
+  if (!post) {
+    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
+  }
+
+  if (!post.reactions.dislikes.by.includes(user._id)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You have not disliked this post!");
+  }
+
+  const updatedPost = await PostModel.findByIdAndUpdate(
+    postId,
+    {
+      $inc: { "reactions.dislikes.count": -1 },
+      $pull: { "reactions.dislikes.by": user._id },
+    },
+    { new: true }
+  );
+
+  if (!updatedPost) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to remove dislike from post!");
   }
 
   return updatedPost;
@@ -187,5 +270,7 @@ export const postServices = {
   likePost,
   dislikePost,
   getAllPostsFromDB,
-  getPostByIdFromDB
+  getPostByIdFromDB,
+  removeDislikeFromPost,
+  removeLikeFromPost
 };

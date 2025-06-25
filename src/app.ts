@@ -5,6 +5,7 @@ import globalErrorHandler from "./app/middlewares/globalErrorhandler";
 import { UserRoutes } from "./app/modules/appData/user/user.route";
 import { AuthRoutes } from "./app/modules/appData/auth/auth.route";
 import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
+import { PostRoutes } from "./app/modules/appData/posts/post.route";
 // import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 const app: Application = express();
 const router = express.Router();
@@ -26,6 +27,7 @@ router.get('/', (req:Request,res:Response)=>{
 app.use('/user', UserRoutes);
 app.use('/auth', AuthRoutes);
 app.use('/sensorData', sensorRoutes);
+app.use('/post', PostRoutes);
 
 
 app.use(globalErrorHandler);
