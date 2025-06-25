@@ -8,5 +8,5 @@ export const generateFarmerId =async()=>{
 
 export const generateFieldId =async()=>{
     const allFieldsDataLength = (await FieldModel.find()).length+1;
-    return `fr${allFieldsDataLength}`
+    return `fd${allFieldsDataLength}`
 }

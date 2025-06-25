@@ -6,7 +6,7 @@ import { UserRoutes } from "./app/modules/appData/user/user.route";
 import { AuthRoutes } from "./app/modules/appData/auth/auth.route";
 import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 import { PostRoutes } from "./app/modules/appData/posts/post.route";
-// import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
+import { FieldRoutes } from "./app/modules/appData/fields/fields.route";
 const app: Application = express();
 const router = express.Router();
 
@@ -28,6 +28,7 @@ app.use('/user', UserRoutes);
 app.use('/auth', AuthRoutes);
 app.use('/sensorData', sensorRoutes);
 app.use('/post', PostRoutes);
+app.use('/field', FieldRoutes);
 
 
 app.use(globalErrorHandler);
