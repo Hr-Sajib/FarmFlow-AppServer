@@ -4,180 +4,175 @@ const createUserValidationSchema = z.object({
   body: z.object({
     name: z
       .string({
-        invalid_type_error: "নাম অবশ্যই একটি স্ট্রিং হতে হবে",
-        required_error: "নাম প্রয়োজন",
+        invalid_type_error: "Name must be a string",
+        required_error: "Name is required",
       })
       .trim()
-      .min(1, { message: "নাম খালি হতে পারে না" }),
+      .min(1, { message: "Name cannot be empty" }),
     address: z
       .string({
-        invalid_type_error: "ঠিকানা অবশ্যই একটি স্ট্রিং হতে হবে",
-        required_error: "ঠিকানা প্রয়োজন",
+        invalid_type_error: "Address must be a string",
+        required_error: "Address is required",
       })
       .trim()
-      .min(1, { message: "ঠিকানা খালি হতে পারে না" }),
+      .min(1, { message: "Address cannot be empty" }),
     farmerId: z
       .string({
-        invalid_type_error: "কৃষক আইডি অবশ্যই একটি স্ট্রিং হতে হবে",
-        required_error: "কৃষক আইডি প্রয়োজন",
+        invalid_type_error: "Farmer ID must be a string",
+        required_error: "Farmer ID is required",
       })
       .trim()
-      .min(1, { message: "কৃষক আইডি খালি হতে পারে না" })
+      .min(1, { message: "Farmer ID cannot be empty" })
       .regex(/^fr[0-9]+$/, {
-        message: 'কৃষক আইডি অবশ্যই "fr" দিয়ে শুরু হবে এবং তারপরে সংখ্যা থাকবে',
+        message: 'Farmer ID must start with "fr" followed by numbers',
       }),
     email: z
       .string({
-        invalid_type_error: "ইমেল অবশ্যই একটি স্ট্রিং হতে হবে",
+        invalid_type_error: "Email must be a string",
       })
-      .email({ message: "ইমেল ফরম্যাট ঠিক নয়" })
+      .email({ message: "Invalid email format" })
       .trim()
       .toLowerCase()
       .optional(),
     phone: z
       .string({
-        invalid_type_error: "ফোন নম্বর অবশ্যই একটি স্ট্রিং হতে হবে",
-        required_error: "ফোন নম্বর প্রয়োজন",
+        invalid_type_error: "Phone number must be a string",
+        required_error: "Phone number is required",
       })
       .trim()
-      .length(11, { message: "ফোন নম্বর অবশ্যই ঠিক ১১টি সংখ্যার হতে হবে" })
+      .length(11, { message: "Phone number must be exactly 11 digits" })
       .regex(/^01[0-9]{9}$/, {
-        message: 'ফোন নম্বর অবশ্যই "01" দিয়ে শুরু হবে এবং ১১ সংখ্যার হতে হবে',
+        message: 'Phone number must start with "01" and be 11 digits',
       }),
     password: z
       .string({
-        invalid_type_error: "পাসওয়ার্ড অবশ্যই একটি স্ট্রিং হতে হবে",
-        required_error: "পাসওয়ার্ড প্রয়োজন",
+        invalid_type_error: "Password must be a string",
+        required_error: "Password is required",
       })
-      .min(6, { message: "পাসওয়ার্ড অবশ্যই কমপক্ষে ৬ অক্ষরের হতে হবে" })
-      .max(10, { message: "পাসওয়ার্ড ১০ অক্ষরের বেশি হতে পারে না" }),
+      .min(6, { message: "Password must be at least 6 characters" })
+      .max(10, { message: "Password cannot exceed 10 characters" }),
     passwordChangedAt: z
       .date({
-        invalid_type_error:
-          "পাসওয়ার্ড পরিবর্তনের সময় অবশ্যই একটি বৈধ তারিখ হতে হবে",
+        invalid_type_error: "Password changed date must be a valid date",
       })
       .optional(),
     role: z
       .string({
-        invalid_type_error: "ভূমিকা/রোল অবশ্যই একটি স্ট্রিং হতে হবে",
-        required_error: "ভূমিকা/রোল প্রয়োজন",
+        invalid_type_error: "Role must be a string",
+        required_error: "Role is required",
       })
       .refine((val) => ["admin", "farmer"].includes(val), {
-        message: 'ভূমিকা/রোল অবশ্যই "admin" অথবা "farmer" হতে হবে',
+        message: 'Role must be either "admin" or "farmer"',
       }),
     status: z
       .string({
-        invalid_type_error: "স্ট্যাটাস অবশ্যই একটি স্ট্রিং হতে হবে",
-        required_error: "স্ট্যাটাস প্রয়োজন",
+        invalid_type_error: "Status must be a string",
+        required_error: "Status is required",
       })
       .refine((val) => ["blocked", "active"].includes(val), {
-        message: 'স্ট্যাটাস অবশ্যই "blocked" অথবা "active" হতে হবে',
+        message: 'Status must be either "blocked" or "active"',
       })
       .default("active"),
     fieldIds: z
       .array(
         z
           .string({
-            invalid_type_error: "ফিল্ড আইডি অবশ্যই একটি স্ট্রিং হতে হবে",
-            required_error: "ফিল্ড আইডি প্রয়োজন",
+            invalid_type_error: "Field ID must be a string",
+            required_error: "Field ID is required",
           })
           .regex(/^fd[0-9]+$/, {
-            message:
-              'ফিল্ড আইডি অবশ্যই "fd" দিয়ে শুরু হবে এবং তারপরে সংখ্যা থাকবে',
+            message: 'Field ID must start with "fd" followed by numbers',
           }),
-        { required_error: "ফিল্ড আইডি অ্যারে প্রয়োজন" }
+        { required_error: "Field IDs array is required" }
       )
       .optional(),
-  }),
+  }).strict(),
 });
 
 const updateUserValidationSchema = z.object({
   body: z.object({
     name: z
       .string({
-        invalid_type_error: "নাম অবশ্যই একটি স্ট্রিং হতে হবে",
+        invalid_type_error: "Name must be a string",
       })
       .trim()
-      .min(1, { message: "নাম খালি হতে পারে না" })
+      .min(1, { message: "Name cannot be empty" })
       .optional(),
     address: z
       .string({
-        invalid_type_error: "ঠিকানা অবশ্যই একটি স্ট্রিং হতে হবে",
-        required_error: "ঠিকানা প্রয়োজন",
+        invalid_type_error: "Address must be a string",
       })
       .trim()
-      .min(1, { message: "ঠিকানা খালি হতে পারে না" }).optional(),
+      .min(1, { message: "Address cannot be empty" })
+      .optional(),
     farmerId: z
       .string({
-        invalid_type_error: "কৃষক আইডি অবশ্যই একটি স্ট্রিং হতে হবে",
+        invalid_type_error: "Farmer ID must be a string",
       })
       .trim()
-      .min(1, { message: "কৃষক আইডি খালি হতে পারে না" })
+      .min(1, { message: "Farmer ID cannot be empty" })
       .regex(/^fr[0-9]+$/, {
-        message: 'কৃষক আইডি অবশ্যই "fr" দিয়ে শুরু হবে এবং তারপরে সংখ্যা থাকবে',
+        message: 'Farmer ID must start with "fr" followed by numbers',
       })
       .optional(),
     email: z
       .string({
-        invalid_type_error: "ইমেল অবশ্যই একটি স্ট্রিং হতে হবে",
+        invalid_type_error: "Email must be a string",
       })
-      .email({ message: "ইমেল ফরম্যাট ঠিক নয়" })
+      .email({ message: "Invalid email format" })
       .trim()
       .toLowerCase()
       .optional(),
     phone: z
       .string({
-        invalid_type_error: "ফোন নম্বর অবশ্যই একটি স্ট্রিং হতে হবে",
+        invalid_type_error: "Phone number must be a string",
       })
       .trim()
-      .length(11, { message: "ফোন নম্বর অবশ্যই ঠিক ১১টি সংখ্যার হতে হবে" })
+      .length(11, { message: "Phone number must be exactly 11 digits" })
       .regex(/^01[0-9]{9}$/, {
-        message: 'ফোন নম্বর অবশ্যই "01" দিয়ে শুরু হবে এবং ১১ সংখ্যার হতে হবে',
+        message: 'Phone number must start with "01" and be 11 digits',
       })
       .optional(),
     password: z
       .string({
-        invalid_type_error: "পাসওয়ার্ড অবশ্যই একটি স্ট্রিং হতে হবে",
+        invalid_type_error: "Password must be a string",
       })
-      .min(6, { message: "পাসওয়ার্ড অবশ্যই কমপক্ষে ৬ অক্ষরের হতে হবে" })
-      .max(10, { message: "পাসওয়ার্ড ১০ অক্ষরের বেশি হতে পারে না" })
+      .min(6, { message: "Password must be at least 6 characters" })
+      .max(10, { message: "Password cannot exceed 10 characters" })
       .optional(),
     passwordChangedAt: z
       .date({
-        invalid_type_error:
-          "পাসওয়ার্ড পরিবর্তনের সময় অবশ্যই একটি বৈধ তারিখ হতে হবে",
+        invalid_type_error: "Password changed date must be a valid date",
       })
       .optional(),
     role: z
       .string({
-        invalid_type_error: "ভূমিকা/রোল অবশ্যই একটি স্ট্রিং হতে হবে",
+        invalid_type_error: "Role must be a string",
       })
       .refine((val) => ["admin", "farmer"].includes(val), {
-        message: 'ভূমিকা/রোল অবশ্যই "admin" অথবা "farmer" হতে হবে',
+        message: 'Role must be either "admin" or "farmer"',
       })
       .optional(),
     status: z
       .string({
-        invalid_type_error: "স্ট্যাটাস অবশ্যই একটি স্ট্রিং হতে হবে",
+        invalid_type_error: "Status must be a string",
       })
       .refine((val) => ["blocked", "active"].includes(val), {
-        message: 'স্ট্যাটাস অবশ্যই "blocked" অথবা "active" হতে হবে',
+        message: 'Status must be either "blocked" or "active"',
       })
       .optional(),
     fieldIds: z
       .array(
         z
           .string({
-            invalid_type_error: "ফিল্ড আইডি অবশ্যই একটি স্ট্রিং হতে হবে",
+            invalid_type_error: "Field ID must be a string",
           })
           .regex(/^fd[0-9]+$/, {
-            message:
-              'ফিল্ড আইডি অবশ্যই "fd" দিয়ে শুরু হবে এবং তারপরে সংখ্যা থাকবে',
-          }),
-        { required_error: "ফিল্ড আইডি অ্যারে প্রয়োজন" }
+            message: 'Field ID must start with "fd" followed by numbers',
+          })
       )
       .optional(),
-  }),
+  }).strict(),
 });
 
 export const UserValidation = {

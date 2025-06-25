@@ -3,7 +3,7 @@ import { IUser } from "./user.interface";
 import { UserModel } from "./user.model";
 import httpStatus from "http-status";
 import bcrypt from "bcrypt";
-import { generateFarmerId } from "../../../utils/generateFarmerId";
+import { generateFarmerId } from "../../../utils/generateIds";
 import config from "../../../../config";
 
 // Create a new user in the database
