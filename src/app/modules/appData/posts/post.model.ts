@@ -1,34 +1,66 @@
-import { Schema, model, Model, SchemaTypes } from "mongoose"; 
-import { IPost, TReaction, TComment } from "./post.interface";
+import { Schema, model } from "mongoose";
+import { IPost, TReaction, TComment, TPostTopic } from "./post.interface";
 
-// Reaction schema (nested within Post)
-const reactionSchema = new Schema<TReaction>({
-  likes: { type: Number, default: 0 },
-  dislikes: { type: Number, default: 0 },
-});
+// Define the Reaction schema
+const reactionSchema = new Schema<TReaction>(
+  {
+    likes: {
+      count: { type: Number, default: 0 },
+      by: [{ type: Schema.Types.ObjectId, ref: "User", trim: true }],
+    },
+    dislikes: {
+      count: { type: Number, default: 0 },
+      by: [{ type: Schema.Types.ObjectId, ref: "User", trim: true }],
+    },
+  },
+  { _id: false }
+);
 
-// Comment schema (nested within Post)
-const commentSchema = new Schema<TComment>({
-  commenterName: { type: String },
-  commenterId: { type: SchemaTypes.ObjectId, ref: "User" },
-  commentText: { type: String },
-});
+// Define the Comment schema
+const commentSchema = new Schema<TComment>(
+  {
+    commenterName: { type: String, trim: true, required: [true, "Commenter name is required"] },
+    commenterId: { type: Schema.Types.ObjectId, ref: "User", required: [true, "Commenter ID is required"] },
+    commentText: { type: String, trim: true, required: [true, "Comment text is required"] },
+  },
+  { _id: true, timestamps: true }
+);
 
-// Post schema
+// Define the Post schema
 const postSchema = new Schema<IPost>(
   {
-    creatorName: { type: String },
-    creatorId: { type: SchemaTypes.ObjectId, ref: "User" }, 
-    postText: { type: String },
-    postImages: { type: [String], default: [] },
-    reactions: { type: reactionSchema, default: { likes: 0, dislikes: 0 } },
-    comments: { type: [commentSchema], default: [] },
-    aboutCrop: { type: String },
+    creatorName: { type: String, trim: true, required: [true, "Creator name is required"] },
+    creatorId: { type: Schema.Types.ObjectId, ref: "User", required: [true, "Creator ID is required"] },
+    postText: { type: String, trim: true, required: [true, "Post text is required"] },
+    postImages: [{ type: String, trim: true }],
+    reactions: { type: reactionSchema, default: { likes: { count: 0, by: [] }, dislikes: { count: 0, by: [] } } },
+    comments: [commentSchema],
+    postTopic: [{
+      type: String,
+      enum: {
+        values: [
+          "rice",
+          "potato",
+          "onion",
+          "disease",
+          "insect",
+          "fertilizer",
+          "irrigation",
+          "weather",
+          "harvest",
+          "equipment",
+          "market",
+          "pest",
+          "technology",
+        ],
+        message: "Post topic must be one of: rice, potato, onion, disease, insect, fertilizer, irrigation, weather, harvest, equipment, market, pest, technology",
+      },
+    }],
   },
   {
-    timestamps: true, 
+    timestamps: true,
   }
 );
 
-
-export const PostModel: Model<IPost> = model<IPost>("Post", postSchema);
+// Export the Mongoose model
+export const PostModel = model<IPost>("Post", postSchema);

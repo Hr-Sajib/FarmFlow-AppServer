@@ -2,7 +2,7 @@ import express from "express";
 import auth from "../../../middlewares/auth";
 import { postController } from "./post.controller";
 import validateRequest from "../../../middlewares/validateRequest";
-import { createPostValidationSchema, updatePostValidationSchema } from "./post.validation";
+import { PostValidation } from "./post.validation";
 
 const router = express.Router();
 
@@ -10,7 +10,7 @@ const router = express.Router();
 router.post(
   "/create",
   auth("admin", "farmer"),
-  validateRequest(createPostValidationSchema),
+  validateRequest(PostValidation.createPostValidationSchema),
   postController.createPost
 );
 
@@ -18,7 +18,7 @@ router.post(
 router.patch(
   "/:postId",
   auth("admin", "farmer"),
-  validateRequest(updatePostValidationSchema),
+  validateRequest(PostValidation.updatePostValidationSchema),
   postController.updatePost
 );
 
@@ -37,7 +37,5 @@ router.post("/:postId/dislike", auth("admin", "farmer"), postController.dislikeP
 // Read all posts
 router.get("/", auth("admin", "farmer"), postController.getAllPosts);
 
-// Delete a comment from a post
-router.delete("/:postId/comment/:commentId", auth("admin", "farmer"), postController.deleteComment);
 
 export const PostRoutes = router;

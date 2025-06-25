@@ -3,14 +3,16 @@ import catchAsync from "../../../utils/catchAsync";
 import sendResponse from "../../../utils/sendResponse";
 import httpStatus from "http-status";
 import { postServices } from "./post.service";
+import { PostValidation } from "./post.validation";
 import AppError from "../../../errors/AppError";
 
+// Create a new post
 const createPost = catchAsync(async (req: Request, res: Response) => {
+
   const postData = req.body;
   const userPhone = req.user.userPhone;
-  const role = req.user.role;
 
-  const newPost = await postServices.createPost(postData, userPhone, role);
+  const newPost = await postServices.createPost(postData, userPhone);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -20,6 +22,7 @@ const createPost = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Update an existing post
 const updatePost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
   const postData = req.body;
@@ -36,6 +39,7 @@ const updatePost = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Delete a post
 const deletePost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
   const userPhone = req.user.userPhone;
@@ -51,13 +55,14 @@ const deletePost = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Add a comment to a post
 const addComment = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
   const commentData = req.body;
   const userPhone = req.user.userPhone;
-  const role = req.user.role;
 
-  const updatedPost = await postServices.addComment(postId, commentData, userPhone, role);
+
+  const updatedPost = await postServices.addComment(postId, userPhone, commentData);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -67,12 +72,12 @@ const addComment = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Like a post
 const likePost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
   const userPhone = req.user.userPhone;
-  const role = req.user.role;
 
-  const updatedPost = await postServices.likePost(postId, userPhone, role);
+  const updatedPost = await postServices.likePost(postId, userPhone);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -82,12 +87,12 @@ const likePost = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Dislike a post
 const dislikePost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
   const userPhone = req.user.userPhone;
-  const role = req.user.role;
 
-  const updatedPost = await postServices.dislikePost(postId, userPhone, role);
+  const updatedPost = await postServices.dislikePost(postId, userPhone);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -97,8 +102,9 @@ const dislikePost = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Get all posts
 const getAllPosts = catchAsync(async (req: Request, res: Response) => {
-  const posts = await postServices.getAllPosts();
+  const posts = await postServices.getAllPostsFromDB();
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -108,18 +114,20 @@ const getAllPosts = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const deleteComment = catchAsync(async (req: Request, res: Response) => {
-  const { postId, commentId } = req.params;
-  const userPhone = req.user.userPhone;
-  const role = req.user.role;
+// Get a single post by ID
+const getPostById = catchAsync(async (req: Request, res: Response) => {
+  const { postId } = req.params;
 
-  const updatedPost = await postServices.deleteComment(postId, commentId, userPhone, role);
+  const post = await postServices.getPostByIdFromDB(postId);
+  if (!post) {
+    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
+  }
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Comment deleted successfully",
-    data: updatedPost,
+    message: "Post retrieved successfully",
+    data: post,
   });
 });
 
@@ -131,5 +139,5 @@ export const postController = {
   likePost,
   dislikePost,
   getAllPosts,
-  deleteComment,
+  getPostById,
 };

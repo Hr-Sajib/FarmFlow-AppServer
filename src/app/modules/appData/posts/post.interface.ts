@@ -7,17 +7,38 @@ export interface IPost {
     postImages: string[];
     reactions: TReaction;
     comments: TComment[];
-    aboutCrop: string;
+    postTopic: TPostTopic[];
 }
 
 export type TReaction = {
-    likes: number;
-    dislikes: number;
+    likes: {
+        count: number,
+        by: Types.ObjectId[] 
+    };
+    dislikes: {
+        count: number,
+        by: Types.ObjectId[]
+    };
 }
+
+export type TPostTopic =
+  | 'rice'
+  | 'potato'
+  | 'onion'
+  | 'disease'
+  | 'insect'
+  | 'fertilizer'
+  | 'irrigation'
+  | 'weather'
+  | 'harvest'
+  | 'equipment'
+  | 'market'
+  | 'pest'
+  | 'technology';
+
 
 export type TComment = {
     commenterName: string;
     commenterId: Types.ObjectId;
     commentText: string;
-    _id?: Types.ObjectId; // Added as optional to match Mongoose subdocument
 }
