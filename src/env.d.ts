@@ -18,5 +18,6 @@ declare namespace NodeJS {
     MQTT_TOPIC: string;
     MQTT_USERNAME: string;
     MQTT_PASSWORD: string;
+    GEMINI_API_KEY: string;
   }
 }

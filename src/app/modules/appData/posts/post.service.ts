@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import AppError from "../../../errors/AppError";
 import httpStatus from "http-status";
 import { IPost, TComment } from "./post.interface";
@@ -14,10 +13,11 @@ const createPost = async (postData: IPost, userPhone: string) => {
 
   const post = {
     creatorName: user.name,
+    creatorPhoto: user.photo,
     creatorId: user._id,
     postText: postData.postText,
-    postImages: postData.postImages,
-    postTopic: postData.postTopic
+    postImage: postData.postImage,
+    postTopics: postData.postTopics
   }
 
 
@@ -47,7 +47,7 @@ const updatePost = async (
 
   const updateData = {
     postText: postData.postText,
-    postImages: postData.postImages
+    postImage: postData.postImage
   }
 
   const updatedPost = await PostModel.findByIdAndUpdate(postId, updateData, {
@@ -92,8 +92,6 @@ const addComment = async (postId: string,userPhone: string, commentData:TComment
     commenterId: user._id,
     commentText: commentData.commentText,
   }
-
-  console.log("conmment : ",commentInput)
 
 
   const updatedPost = await PostModel.findByIdAndUpdate(

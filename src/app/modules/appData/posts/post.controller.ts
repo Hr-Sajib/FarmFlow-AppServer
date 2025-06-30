@@ -10,6 +10,7 @@ import AppError from "../../../errors/AppError";
 const createPost = catchAsync(async (req: Request, res: Response) => {
 
   const postData = req.body;
+
   const userPhone = req.user.userPhone;
 
   const newPost = await postServices.createPost(postData, userPhone);

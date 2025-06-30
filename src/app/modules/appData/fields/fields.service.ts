@@ -181,6 +181,19 @@ const readAllFields = async () => {
   return fields;
 };
 
+const readMyFieldsFromDB = async (userPhone: string) => {
+
+  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
+  }
+
+  const targetFarmerId = user.farmerId;
+
+  const fields = await FieldModel.find({ farmerId: targetFarmerId });
+  return fields;
+};
+
 // Read a specific field by fieldId
 const readFieldById = async (fieldId: string) => {
   const field = await FieldModel.findOne({ fieldId, isDeleted: false });
@@ -196,4 +209,5 @@ export const fieldServices = {
   updateField,
   readAllFields,
   readFieldById,
+  readMyFieldsFromDB
 };

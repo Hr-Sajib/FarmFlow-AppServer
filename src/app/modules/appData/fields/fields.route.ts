@@ -16,6 +16,9 @@ router.patch("/:fieldId", auth("admin", "farmer"), fieldController.updateField);
 // Read all fields
 router.get("/", auth("admin", "farmer"), fieldController.readAllFields);
 
+// Read all fields
+router.get("/myFields", auth("admin", "farmer"), fieldController.readMyFields);
+
 // Read a specific field by fieldId
 router.get("/:fieldId", auth("admin", "farmer"), fieldController.readFieldById);
 

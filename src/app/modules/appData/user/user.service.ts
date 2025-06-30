@@ -36,6 +36,15 @@ const getUserByIdFromDB = async (userId: string) => {
   return user;
 };
 
+const getMeFromDB = async (userPhone: string) => {
+
+  const user = await UserModel.findOne({phone: userPhone});
+  if (!user) {
+    throw new AppError(400, "Failed to fetch user!");
+  }
+  return user;
+};
+
 // Toggle user status between active and blocked
 const toggleUserStatus = async (userId: string) => {
   const user = await UserModel.findById(userId);
@@ -159,5 +168,6 @@ export const userServices = {
   updateUserPassword,
   softDeleteUserInDB,
   getAllUsersFromDB,
-  getUserByIdFromDB
+  getUserByIdFromDB,
+  getMeFromDB
 };

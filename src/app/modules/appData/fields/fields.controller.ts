@@ -67,6 +67,18 @@ const readAllFields = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Read all fields
+const readMyFields = catchAsync(async (req: Request, res: Response) => {
+  const fields = await fieldServices.readMyFieldsFromDB(req.user?.userPhone);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Your Fields retrieved successfully",
+    data: fields,
+  });
+});
+
 // Read a specific field by fieldId
 const readFieldById = catchAsync(async (req: Request, res: Response) => {
   const { fieldId } = req.params;
@@ -90,4 +102,5 @@ export const fieldController = {
   updateField,
   readAllFields,
   readFieldById,
+  readMyFields
 };

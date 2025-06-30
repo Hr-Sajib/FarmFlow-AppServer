@@ -7,6 +7,8 @@ import { AuthRoutes } from "./app/modules/appData/auth/auth.route";
 import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 import { PostRoutes } from "./app/modules/appData/posts/post.route";
 import { FieldRoutes } from "./app/modules/appData/fields/fields.route";
+import { handleChat } from "./app/modules/chat/chat.controller";
+import { ChatRoutes } from "./app/modules/chat/chat.route";
 const app: Application = express();
 const router = express.Router();
 
@@ -14,7 +16,8 @@ const router = express.Router();
 app.use(express.json());
 app.use(cors({origin: [
     "http://localhost:5173",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://localhost:3001"
   ], credentials: true}));
 app.use(cookieParser()); // Add this
 
@@ -29,6 +32,7 @@ app.use('/auth', AuthRoutes);
 app.use('/sensorData', sensorRoutes);
 app.use('/post', PostRoutes);
 app.use('/field', FieldRoutes);
+app.use('/chat', ChatRoutes);
 
 
 app.use(globalErrorHandler);

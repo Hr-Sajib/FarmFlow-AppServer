@@ -2,12 +2,13 @@ import { Types } from "mongoose";
 
 export interface IPost {
     creatorName: string;
+    creatorPhoto: string;
     creatorId: Types.ObjectId;
     postText: string;
-    postImages: string[];
+    postImage: string;
     reactions: TReaction;
     comments: TComment[];
-    postTopic: TPostTopic[];
+    postTopics: TPostTopic[];
 }
 
 export type TReaction = {

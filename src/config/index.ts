@@ -19,9 +19,12 @@ export default {
   influxDB_org: process.env.INFLUXDB_ORG,
   influxDB_bucket: process.env.INFLUXDB_BUCKET,
 
+  gemini_api_key : process.env.GEMINI_API_KEY,
+
   mqtt_broker: process.env.MQTT_BROKER,
   mqtt_port: parseInt(process.env.MQTT_PORT || '8883', 10),
   mqtt_topic: process.env.MQTT_TOPIC,
   mqtt_username: process.env.MQTT_USERNAME,
   mqtt_password: process.env.MQTT_PASSWORD,
+
 };

@@ -44,6 +44,18 @@ const getUserById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getMe = catchAsync(async (req: Request, res: Response) => {
+
+  const user = await userServices.getMeFromDB(req.user?.userPhone);
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "User fetched successfully",
+    data: user,
+  });
+});
+
 // Toggle user status between active and blocked
 const toggleUserStatus = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.params;
@@ -60,6 +72,7 @@ const toggleUserStatus = catchAsync(async (req: Request, res: Response) => {
 
 // Update user data
 const updateUser = catchAsync(async (req: Request, res: Response) => {
+  console.log("ctrl touch")
   const { userId } = req.params;
   const updates = req.body;
   const userPhone = req.user.userPhone; // Set by auth middleware
@@ -116,5 +129,6 @@ export const userController = {
   updatePassword,
   softDeleteUser,
   getAllUsers,
-  getUserById
+  getUserById,
+  getMe
 };

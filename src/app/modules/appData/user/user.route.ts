@@ -17,6 +17,12 @@ router.get(
   auth("admin"),
   userController.getUserById
 );
+
+router.post(
+  "/getMe",
+  auth("admin", "farmer"),
+  userController.getMe
+);
 router.patch(
   "/toggle-status/:userId",
   auth("admin"),

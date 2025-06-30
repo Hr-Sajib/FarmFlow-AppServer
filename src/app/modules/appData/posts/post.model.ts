@@ -30,12 +30,13 @@ const commentSchema = new Schema<TComment>(
 const postSchema = new Schema<IPost>(
   {
     creatorName: { type: String, trim: true, required: [true, "Creator name is required"] },
+    creatorPhoto: { type: String, trim: true, required: [true, "Creator image is required"] },
     creatorId: { type: Schema.Types.ObjectId, ref: "User", required: [true, "Creator ID is required"] },
     postText: { type: String, trim: true, required: [true, "Post text is required"] },
-    postImages: [{ type: String, trim: true }],
+    postImage: { type: String, trim: true },
     reactions: { type: reactionSchema, default: { likes: { count: 0, by: [] }, dislikes: { count: 0, by: [] } } },
     comments: [commentSchema],
-    postTopic: [{
+    postTopics: [{
       type: String,
       enum: {
         values: [
