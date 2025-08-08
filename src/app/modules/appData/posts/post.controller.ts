@@ -1,10 +1,14 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import catchAsync from "../../../utils/catchAsync";
 import sendResponse from "../../../utils/sendResponse";
 import httpStatus from "http-status";
 import { postServices } from "./post.service";
 import { PostValidation } from "./post.validation";
 import AppError from "../../../errors/AppError";
+import { generateStaticPdf } from "../../../utils/pdfCreate";
+import { PostModel } from "./post.model";
+import { jsonMultiToXlsxBuffer, jsonToXlsxBuffer } from "../../../utils/jsonToXlsx";
+import { UserModel } from "../user/user.model";
 
 // Create a new post
 const createPost = catchAsync(async (req: Request, res: Response) => {
@@ -161,6 +165,86 @@ const getPostById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+
+
+export const generateStaticPdfController = catchAsync(async (req: Request, res: Response) => {
+  const pdfBuffer = await generateStaticPdf();
+
+  res.set({
+    "Content-Type": "application/pdf",
+    "Content-Disposition": "attachment; filename=farmflow-static-report.pdf",
+  });
+
+  res.status(httpStatus.OK).send(pdfBuffer);
+});
+
+
+
+// Export posts and users as XLSX in a single controller
+
+export const exportPostsXlsx = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  // 1️⃣ Fetch posts with populated creator and commenter
+  const posts = await PostModel.find()
+    .populate("creatorId", "name phone role")
+    .populate("comments.commenterId", "name phone role")
+    .lean();
+
+  const users = await UserModel.find().lean();
+
+  console.log("Posts:", posts);
+  console.log("Users:", users);
+
+  // 2️⃣ Shape posts for cleaner export (optional)
+  const postData = posts.map(post => ({
+    Title: post.title,
+    Content: post.content,
+    CreatorName: post.creatorId?.name || "N/A",
+    CreatorPhone: post.creatorId?.phone || "N/A",
+    CreatorRole: post.creatorId?.role || "N/A",
+    CreatedAt: post.createdAt?.toISOString() || "N/A",
+  }));
+
+  // 3️⃣ Shape users for cleaner export
+  const userData = users.map(user => ({
+    Name: user.name,
+    FarmerID: user.farmerId,
+    Email: user.email || "N/A",
+    Phone: user.phone,
+    Role: user.role,
+    Status: user.status,
+    Address: user.address,
+  }));
+
+  // 4️⃣ Validate data before generating XLSX
+  if (postData.length === 0 && userData.length === 0) {
+    return next({
+      status: 404,
+      message: "No posts or users data available for export",
+    });
+  }
+
+  // 5️⃣ Generate XLSX buffer with multiple sheets
+  const xlsxBuffer = jsonMultiToXlsxBuffer([
+    {
+      data: postData,
+      sheetName: "PostsReport",
+      headers: ["Title", "Content", "CreatorName", "CreatorPhone", "CreatorRole", "CreatedAt"],
+    },
+    {
+      data: userData,
+      sheetName: "UsersReport",
+      headers: ["Name", "FarmerID", "Email", "Phone", "Role", "Status", "Address"],
+    },
+  ]);
+
+  // 6️⃣ Send XLSX as download
+  res.set({
+    "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "Content-Disposition": "attachment; filename=farmflow_report.xlsx",
+  });
+  res.send(xlsxBuffer); // Removed return to align with RequestHandler
+});
+
 export const postController = {
   createPost,
   updatePost,
@@ -171,5 +255,7 @@ export const postController = {
   getAllPosts,
   getPostById,
   removeDislikeFromPost,
-  removeLikeFromPost
+  removeLikeFromPost,
+  generateStaticPdfController,
+  exportPostsXlsx
 };

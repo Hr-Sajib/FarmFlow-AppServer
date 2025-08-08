@@ -11,7 +11,7 @@ import { initializeMqttClient } from './app/modules/sensorData/mqtt.service';
 
 
 // Initialize InfluxDB client
-const influxClient = new InfluxDB({
+export const influxClient = new InfluxDB({
   url: config.influxDB_url as string,
   token: config.influxDB_token as string,
 });

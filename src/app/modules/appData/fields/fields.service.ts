@@ -203,11 +203,70 @@ const readFieldById = async (fieldId: string) => {
   return field;
 };
 
+const loadInsightsFromFieldData = async (fieldId: string, userPhone: string, role: string) => {
+  // Verify user exists
+  const user = await UserModel.findOne({ phone: userPhone, isDeleted: false });
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
+  }
+
+  // Find the field
+  const field = await FieldModel.findOne({ fieldId, isDeleted: false });
+  if (!field) {
+    throw new AppError(httpStatus.NOT_FOUND, "Field not found!");
+  }
+
+  // Check authorization (admin or field owner)
+  if (role !== "admin" && field.farmerId !== user.farmerId) {
+    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only access insights for your own fields!");
+  }
+
+  try {
+    // Construct prompt for Gemini API
+    const prompt = `
+      You are an agricultural AI assistant. Based on the following field data, provide actionable insights to help a farmer optimize their field conditions:
+
+      - Crop: ${field.fieldCrop || 'Unknown'}
+      - Soil Type: ${field.soilType || 'Unknown'}
+      - Field Size: ${field.fieldSizeInAcres ? field.fieldSizeInAcres + ' acres' : 'Unknown'}
+      - Temperature: ${(field.sensorData?.temperature || 0).toFixed(2)}°C
+      - Humidity: ${(field.sensorData?.humidity || 0).toFixed(2)}%
+      - Soil Moisture: ${(field.sensorData?.soilMoisture || 0).toFixed(2)}%
+      - Light Intensity: ${(field.sensorData?.lightIntensity || 0).toFixed(2)} lux
+
+      Provide specific recommendations for irrigation, pest control, fertilization, or other farming practices. Be concise, practical, and farmer-friendly.
+    `;
+
+    // console.log('fieldServices.loadInsightsFromFieldData - Sending to Gemini with prompt:', prompt);
+
+    // Call Gemini API (non-streaming)
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 500,
+      },
+    });
+
+    const responseText = result.response.text();
+    if (!responseText) {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to generate insights from Gemini API!");
+    }
+
+    console.log('fieldServices.loadInsightsFromFieldData - Gemini response:', responseText);
+    return responseText;
+  } catch (error) {
+    console.error('fieldServices.loadInsightsFromFieldData - Error generating insights:', error);
+    throw error instanceof AppError ? error : new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to generate field insights!");
+  }
+};
+
 export const fieldServices = {
   addField,
   removeField,
   updateField,
   readAllFields,
   readFieldById,
-  readMyFieldsFromDB
+  readMyFieldsFromDB,
+  loadInsightsFromFieldData
 };

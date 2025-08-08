@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { generateChatResponse } from './chat.service';
 import catchAsync from '../../utils/catchAsync';
-import { Types } from 'mongoose';
 import Conversation from './chat.model';
 import { TMessage } from './chat.interface';
 
@@ -67,9 +66,8 @@ export const handleChat = catchAsync(async (req: Request, res: Response, next: N
 });
 
 export const getMyChats = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userPhone = "01812345672"; // hardcoded
+  const userPhone = req.params.userPhone;
 
-  try {
     const conversations = await Conversation.find({ userPhone }).sort({ updatedAt: -1 });
 
     res.status(200).json({
@@ -77,7 +75,5 @@ export const getMyChats = catchAsync(async (req: Request, res: Response, next: N
       message: 'Conversations retrieved successfully',
       data: conversations,
     });
-  } catch (error) {
-    next(error);
-  }
+ 
 });

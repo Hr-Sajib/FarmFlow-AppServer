@@ -9,7 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "prettier:fix": "npx prettier --write src",
-    "start:dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "sd": "ts-node-dev --respawn --transpile-only src/server.ts",
     "start:prod": "node ./dist/server.js",
     "build": "tsc"
   },
@@ -47,7 +47,9 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.1",
     "mqtt": "^5.12.0",
+    "puppeteer": "^24.11.2",
     "socket.io": "^4.8.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.3"
   }
 }

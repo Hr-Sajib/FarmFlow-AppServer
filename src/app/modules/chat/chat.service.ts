@@ -29,7 +29,7 @@ export const generateChatResponse = async (newMessages: TMessage[], socket?: Soc
       parts: [{ text: msg.content }],
     }));
 
-    console.log('chat.service - Sending to Gemini with full context:', contents);
+    // console.log('chat.service - Sending to Gemini with full context:', contents);
 
     let responseText = '';
 

@@ -1,6 +1,6 @@
 import express from "express";
 import auth from "../../../middlewares/auth";
-import { postController } from "./post.controller";
+import { generateStaticPdfController, postController } from "./post.controller";
 import validateRequest from "../../../middlewares/validateRequest";
 import { PostValidation } from "./post.validation";
 
@@ -37,7 +37,12 @@ router.post("/dislike/:postId", auth("admin", "farmer"), postController.dislikeP
 router.post("/removeDislike/:postId", auth("admin", "farmer"), postController.removeDislikeFromPost);
 
 // Read all posts
-router.get("/", auth("admin", "farmer"), postController.getAllPosts);
+router.get("/", 
+  // auth("admin", "farmer"), 
+  postController.getAllPosts);
+
+router.get("/pdf", generateStaticPdfController);
+router.get("/xl", postController.exportPostsXlsx);
 
 
 export const PostRoutes = router;
