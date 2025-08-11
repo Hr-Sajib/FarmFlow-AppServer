@@ -173,7 +173,7 @@ export const insertDataToInfluxDB = async (measurement: string, data: any): Prom
 
     point.timestamp(timestamp);
 
-    console.log('Writing point to InfluxDB:', point.toString());
+    // console.log('Writing point to InfluxDB:', point.toString());
 
     api.writePoint(point);
     await api.flush();

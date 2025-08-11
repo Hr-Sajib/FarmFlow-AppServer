@@ -5,8 +5,17 @@ import { IField } from "./fields.interface";
 import { generateFieldId } from "../../../utils/generateIds";
 import { FieldModel } from "./fields.model";
 import { ClientSession } from "mongoose";
+import { GoogleGenerativeAI, Content, GenerateContentStreamResult } from '@google/generative-ai';
+import config from "../../../../config";
+import axios from "axios";
+import Groq from "groq-sdk";
 
 
+
+const groq = new Groq({ apiKey: config.groq_api_key });
+
+const genAI = new GoogleGenerativeAI(config.gemini_api_key);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 const addField = async (fieldData: IField, userPhone: string, role: string) => {
 
@@ -203,63 +212,175 @@ const readFieldById = async (fieldId: string) => {
   return field;
 };
 
-const loadInsightsFromFieldData = async (fieldId: string, userPhone: string, role: string) => {
-  // Verify user exists
-  const user = await UserModel.findOne({ phone: userPhone, isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
 
+
+export type TFieldInfo = {
+  fieldCrop?: string;
+  soilType?: string;
+  fieldSizeInAcres?: string;
+  sensorData?: {
+    temperature?: string;
+    humidity?: string;
+    soilMoisture?: string;
+    lightIntensity?: string;
+  };
+  userPhone?: string;
+  role?: 'admin' | 'farmer';
+};
+
+
+// const loadInsightsFromFieldData = async (fieldInfo: TFieldInfo) => {
+//   // Fetch soil data from SoilGrids API
+//   let soilData = {
+//     clay: 0,
+//     silt: 0,
+//     sand: 0,
+//     phh2o: 0,
+//     soc: 0,
+//   };
+//   try {
+//     const response = await axios.get(
+//       `https://rest.isric.org/soilgrids/v2.0/properties/query?lat=${fieldInfo.latitude}&lon=${fieldInfo.longitude}&property=clay&property=silt&property=sand&property=phh2o&property=soc&depth=0-5cm&value=mean`,
+//       { headers: { accept: 'application/json' } }
+//     );
+//     const layers = response.data.properties.layers;
+//     soilData = {
+//       clay: layers.find((l: any) => l.name === 'clay')?.depths[0].values.mean / 10 || 0, // Convert g/kg to %
+//       silt: layers.find((l: any) => l.name === 'silt')?.depths[0].values.mean / 10 || 0, // Convert g/kg to %
+//       sand: layers.find((l: any) => l.name === 'sand')?.depths[0].values.mean / 10 || 0, // Convert g/kg to %
+//       phh2o: layers.find((l: any) => l.name === 'phh2o')?.depths[0].values.mean / 10 || 0, // Convert pH*10 to pH
+//       soc: layers.find((l: any) => l.name === 'soc')?.depths[0].values.mean / 10 || 0, // Convert dg/kg to g/kg
+//     };
+//     console.log('fieldServices.loadInsightsFromFieldData - SoilGrids response:', soilData);
+//   } catch (err) {
+//     console.error('fieldServices.loadInsightsFromFieldData - SoilGrids API error:', err);
+//     // Continue with default values if API fails
+//   }
+
+//   const prompt = `
+//       You are an agricultural AI assistant. Based on the following field and soil data, provide actionable insights to help a farmer optimize their field conditions:
+
+//       - Crop: ${fieldInfo?.fieldCrop || 'Unknown'}
+//       - Soil Type: ${fieldInfo?.soilType || 'Unknown'}
+//       - Field Size: ${fieldInfo?.fieldSizeInAcres || 'Unknown'} acres
+//       - Temperature: ${(fieldInfo?.sensorData?.temperature || 0)}°C
+//       - Humidity: ${(fieldInfo?.sensorData?.humidity || 0)}%
+//       - Soil Moisture: ${(fieldInfo?.sensorData?.soilMoisture || 0)}%
+//       - Light Intensity: ${(fieldInfo?.sensorData?.lightIntensity || 0)} lux
+//       - Soil Clay Content: ${soilData.clay.toFixed(1)}%
+//       - Soil Silt Content: ${soilData.silt.toFixed(1)}%
+//       - Soil Sand Content: ${soilData.sand.toFixed(1)}%
+//       - Soil pH: ${soilData.phh2o.toFixed(1)}
+//       - Soil Organic Carbon: ${soilData.soc.toFixed(1)} g/kg
+
+//       Provide specific recommendations for environmental controlls based on the data given with most focus on temperature,
+//       humidity, soil moisture, light intensity. Also add some insight based on the other values and if any of those are in critical situation.
+//       Give tailored advice. Keep insights concise, practical, use best utilization of word limit given.
+//       Try to give information and precise direction rather then descriptions. Keep the response within 100 english words.
+//       But deliver the bangla translation of the original english response, original english one is not needed.
+//     `;
+
+//   console.log('fieldServices.loadInsightsFromFieldData - Prompt:', prompt);
+
+//   // Call Groq API
+//   try {
+//     const completion = await groq.chat.completions.create({
+//       model: 'llama3-70b-8192',
+//       messages: [{ role: 'user', content: prompt }],
+//       temperature: 0.7,
+//       max_tokens: 400, // ~100 words (assuming ~4 tokens/word)
+//     });
+
+//     const responseText = completion.choices[0]?.message?.content;
+//     if (!responseText) {
+//       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to generate insights from Groq API!');
+//     }
+
+//     console.log('fieldServices.loadInsightsFromFieldData - Groq response:', responseText);
+//     return responseText;
+//   } catch (err) {
+//     console.error('fieldServices.loadInsightsFromFieldData - Groq API error:', err);
+//     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to generate insights from Groq API!');
+//   }
+// };
+
+
+
+
+const loadInsightsFromFieldData = async (fieldInfo: TFieldInfo) => {
   // Find the field
-  const field = await FieldModel.findOne({ fieldId, isDeleted: false });
-  if (!field) {
-    throw new AppError(httpStatus.NOT_FOUND, "Field not found!");
-  }
 
-  // Check authorization (admin or field owner)
-  if (role !== "admin" && field.farmerId !== user.farmerId) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only access insights for your own fields!");
-  }
-
+  // Fetch soil data from SoilGrids API
+  let soilData = {
+    clay: 0,
+    silt: 0,
+    sand: 0,
+    phh2o: 0,
+    soc: 0,
+  };
   try {
-    // Construct prompt for Gemini API
-    const prompt = `
-      You are an agricultural AI assistant. Based on the following field data, provide actionable insights to help a farmer optimize their field conditions:
+    const response = await axios.get(
+      `https://rest.isric.org/soilgrids/v2.0/properties/query?lat=${fieldInfo.latitude}&lon=${fieldInfo.longitude}&property=clay&property=silt&property=sand&property=phh2o&property=soc&depth=0-5cm&value=mean`,
+      { headers: { accept: 'application/json' } }
+    );
+    const layers = response.data.properties.layers;
+    soilData = {
+      clay: layers.find((l: any) => l.name === 'clay')?.depths[0].values.mean / 10 || 0, // Convert g/kg to %
+      silt: layers.find((l: any) => l.name === 'silt')?.depths[0].values.mean / 10 || 0, // Convert g/kg to %
+      sand: layers.find((l: any) => l.name === 'sand')?.depths[0].values.mean / 10 || 0, // Convert g/kg to %
+      phh2o: layers.find((l: any) => l.name === 'phh2o')?.depths[0].values.mean / 10 || 0, // Convert pH*10 to pH
+      soc: layers.find((l: any) => l.name === 'soc')?.depths[0].values.mean / 10 || 0, // Convert dg/kg to g/kg
+    };
+    console.log('fieldServices.loadInsightsFromFieldData - SoilGrids response:', soilData);
+  } catch (err) {
+    console.error('fieldServices.loadInsightsFromFieldData - SoilGrids API error:', err);
+    // Continue with default values if API fails
+  }
 
-      - Crop: ${field.fieldCrop || 'Unknown'}
-      - Soil Type: ${field.soilType || 'Unknown'}
-      - Field Size: ${field.fieldSizeInAcres ? field.fieldSizeInAcres + ' acres' : 'Unknown'}
-      - Temperature: ${(field.sensorData?.temperature || 0).toFixed(2)}°C
-      - Humidity: ${(field.sensorData?.humidity || 0).toFixed(2)}%
-      - Soil Moisture: ${(field.sensorData?.soilMoisture || 0).toFixed(2)}%
-      - Light Intensity: ${(field.sensorData?.lightIntensity || 0).toFixed(2)} lux
+  const prompt = `
+      You are an agricultural AI assistant. Based on the following field and soil data, provide actionable insights to help a farmer optimize their field conditions:
 
-      Provide specific recommendations for irrigation, pest control, fertilization, or other farming practices. Be concise, practical, and farmer-friendly.
+      - Crop: ${fieldInfo?.fieldCrop || 'Unknown'}
+      - Soil Type: ${fieldInfo?.soilType || 'Unknown'}
+      - Field Size: ${fieldInfo?.fieldSizeInAcres || 'Unknown'} acres
+      - Temperature: ${(fieldInfo?.sensorData?.temperature || 0)}°C
+      - Humidity: ${(fieldInfo?.sensorData?.humidity || 0)}%
+      - Soil Moisture: ${(fieldInfo?.sensorData?.soilMoisture || 0)}%
+      - Light Intensity: ${(fieldInfo?.sensorData?.lightIntensity || 0)} lux
+      - Soil Clay Content: ${soilData.clay.toFixed(1)}%
+      - Soil Silt Content: ${soilData.silt.toFixed(1)}%
+      - Soil Sand Content: ${soilData.sand.toFixed(1)}%
+      - Soil pH: ${soilData.phh2o.toFixed(1)}
+      - Soil Organic Carbon: ${soilData.soc.toFixed(1)} g/kg
+
+      Provide specific recommendations for environmental controlls based on the data given with most focus on temperature,
+      humidity, soil moisture, light intensity. Also add some insight based on the other values and if any of those are in critical situation.
+      Give tailored advice. Keep insights concise, practical, use best utilization of word limit given.
+      Try to give information and precise direction rather then descriptions. Keep the response within 200 bangla.
     `;
 
-    // console.log('fieldServices.loadInsightsFromFieldData - Sending to Gemini with prompt:', prompt);
+  // console.log('Prompt________', prompt);
 
-    // Call Gemini API (non-streaming)
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 500,
-      },
-    });
+  // Call Gemini API (non-streaming)
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 1600, // ~400 words (assuming 4 tokens/word)
+    },
+  });
 
-    const responseText = result.response.text();
-    if (!responseText) {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to generate insights from Gemini API!");
-    }
 
-    console.log('fieldServices.loadInsightsFromFieldData - Gemini response:', responseText);
-    return responseText;
-  } catch (error) {
-    console.error('fieldServices.loadInsightsFromFieldData - Error generating insights:', error);
-    throw error instanceof AppError ? error : new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to generate field insights!");
+  // const responseText = "no res";
+  const responseText = result.response.text();
+  if (!responseText) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to generate insights from Gemini API!");
   }
+
+  // console.log('fieldServices.loadInsightsFromFieldData - Gemini response:', responseText);
+  return responseText;
 };
+
 
 export const fieldServices = {
   addField,

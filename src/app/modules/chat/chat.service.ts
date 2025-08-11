@@ -4,24 +4,36 @@ import config from '../../../config';
 import Conversation from './chat.model';
 import { TMessage } from './chat.interface';
 
-
 const genAI = new GoogleGenerativeAI(config.gemini_api_key);
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-export const generateChatResponse = async (newMessages: TMessage[], socket?: Socket): Promise<string> => {
-  const userPhone = '01812345672'; // Hardcoded userPhone declared in outer scope
-
+export const generateChatResponse = async (
+  newMessages: TMessage[],
+  userPhone: string,
+  socket?: Socket,
+  conversationId?: string,
+): Promise<{ responseText: string; conversationId: string }> => {
   try {
-    // Fetch existing conversation
-    const existingConversation = await Conversation.findOne({ userPhone });
     let fullMessages: TMessage[] = [];
 
-    if (existingConversation) {
+    if (conversationId) {
+      const existingConversation = await Conversation.findById(conversationId);
+      if (!existingConversation) {
+        throw new Error('Conversation not found');
+      }
+      if (existingConversation.userPhone !== userPhone) {
+        throw new Error('Unauthorized: Conversation does not belong to the user');
+      }
       fullMessages = [...existingConversation.messages];
     }
 
     // Append new user message(s)
     fullMessages = [...fullMessages, ...newMessages];
+
+    // If no messages, throw an error
+    if (fullMessages.length === 0) {
+      throw new Error('No messages provided for response generation');
+    }
 
     // Map full messages to Gemini's content format
     const contents: Content[] = fullMessages.map((msg) => ({
@@ -29,7 +41,7 @@ export const generateChatResponse = async (newMessages: TMessage[], socket?: Soc
       parts: [{ text: msg.content }],
     }));
 
-    // console.log('chat.service - Sending to Gemini with full context:', contents);
+    console.log('chat.service - Sending to Gemini with full context:', contents);
 
     let responseText = '';
 
@@ -52,33 +64,63 @@ export const generateChatResponse = async (newMessages: TMessage[], socket?: Soc
         }
       }
     } else {
-      // Non-streaming response (for HTTP) - userPhone should come from controller
-      throw new Error('Non-streaming mode not supported without userPhone from controller');
+      // Non-streaming response (for HTTP)
+      const result = await model.generateContent({
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1000,
+        },
+      });
+      responseText = result.response.text();
     }
 
     // Append new assistant message to the conversation
     const newAssistantMessage: TMessage = { role: 'assistant', content: responseText, createdAt: new Date() };
-    if (existingConversation) {
-      existingConversation.messages.push(...newMessages.slice(-1), newAssistantMessage); // Append new user message(s) and assistant response
-      existingConversation.updatedAt = new Date();
-      await existingConversation.save();
+    let savedConversation;
+    if (conversationId) {
+      savedConversation = await Conversation.findByIdAndUpdate(
+        conversationId,
+        {
+          $push: { messages: { $each: [...newMessages.slice(-1), newAssistantMessage] } },
+          updatedAt: new Date(),
+        },
+        { new: true },
+      );
     } else {
-      await Conversation.create({
+      savedConversation = await Conversation.create({
         userPhone,
-        messages: [...fullMessages, newAssistantMessage], // Include all messages and new assistant response
+        messages: [...fullMessages, newAssistantMessage],
         createdAt: new Date(),
         updatedAt: new Date(),
       });
     }
 
-    return responseText;
+    if (!savedConversation) {
+      throw new Error('Failed to save conversation');
+    }
+
+    return { responseText, conversationId: savedConversation._id.toString() };
   } catch (error) {
     console.error('chat.service - Error generating response:', error);
     throw new Error('Failed to generate chat response');
   }
 };
 
-interface Message {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+
+const deleteConversationById = async (conversationId: string): Promise<{ message: string }> => {
+    const existingConversation = await Conversation.findById(conversationId);
+    if (!existingConversation) {
+      throw new Error('Conversation not found');
+    }
+
+    await Conversation.findByIdAndDelete(conversationId);
+
+    return { message: 'Conversation deleted successfully' };
+};
+
+
+export const ChatServices = {
+  generateChatResponse,
+  deleteConversationById
 }

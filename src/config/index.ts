@@ -20,6 +20,7 @@ export default {
   influxDB_bucket: process.env.INFLUXDB_BUCKET,
 
   gemini_api_key : process.env.GEMINI_API_KEY,
+  groq_api_key : process.env.GROQ_API_KEY,
 
   mqtt_broker: process.env.MQTT_BROKER,
   mqtt_port: parseInt(process.env.MQTT_PORT || '8883', 10),

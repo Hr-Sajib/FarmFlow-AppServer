@@ -19,5 +19,6 @@ declare namespace NodeJS {
     MQTT_USERNAME: string;
     MQTT_PASSWORD: string;
     GEMINI_API_KEY: string;
+    GROQ_API_KEY: string
   }
 }

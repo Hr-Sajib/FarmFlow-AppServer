@@ -85,7 +85,7 @@ export const initializeMqttClient = (): void => {
   mqttClient.on('message', async (topic, message) => {
     try {
       const messageString = message.toString();
-      console.log(`Received message on topic '${topic}': ${messageString}`);
+      // console.log(`Received message on topic '${topic}': ${messageString}`);
 
       // Find the topic configuration
       const topicConfig = topicConfigs.find((config) => config.topic === topic);
@@ -104,7 +104,7 @@ export const initializeMqttClient = (): void => {
       }
 
       // Log parsed data
-      console.log(`Parsed data for topic ${topic}:`, data);
+      // console.log(`Parsed data for topic ${topic}:`, data);
 
       // Insert data into InfluxDB
       await insertDataToInfluxDB(topicConfig.measurement, data);

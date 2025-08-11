@@ -96,11 +96,26 @@ const readFieldById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+
+const getFieldInsights = catchAsync(async (req: Request, res: Response) => {
+  const fieldInfo = req?.body?.data;
+
+    const insights = await fieldServices.loadInsightsFromFieldData(fieldInfo);
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: 'Field insights generated successfully',
+      data: { insights },
+    });
+});
+
+
 export const fieldController = {
   addField,
   removeField,
   updateField,
   readAllFields,
   readFieldById,
-  readMyFields
+  readMyFields,
+  getFieldInsights
 };

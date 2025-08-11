@@ -4,6 +4,8 @@ import { generateChatResponse } from './chat.service';
 import { TMessage } from './chat.interface';
 
 const chatRequestSchema = z.object({
+  userPhone: z.string().regex(/^\d{10,}$/, 'Invalid user phone format: must be at least 10 digits'),
+  conversationId: z.string().optional(),
   messages: z
     .array(
       z.object({
@@ -35,23 +37,21 @@ export const setupChatSocket = (io: Server) => {
           return;
         }
 
-        const { messages } = parseResult.data;
-        console.log('chat.socket - Validated messages:', messages);
+        const { messages, userPhone, conversationId } = parseResult.data;
+        console.log('chat.socket - Validated messages:', messages, 'userPhone:', userPhone, 'conversationId:', conversationId);
 
         // Add createdAt to each message to match TMessage type
         const enrichedMessages: TMessage[] = messages.map((msg) => ({
           ...msg,
           createdAt: new Date(),
         }));
-        console.log('chat.socket - Enriched messages:', enrichedMessages);
 
         // Emit 'chat:start' to indicate processing
         socket.emit('chat:start');
-        console.log('chat.socket - Emitted chat:start');
 
         // Stream response
-        console.log('chat.socket - Calling generateChatResponse with enriched messages:', enrichedMessages);
-        await generateChatResponse(enrichedMessages, socket);
+        console.log('chat.socket - Calling generateChatResponse with enriched messages:', enrichedMessages, 'userPhone:', userPhone, 'conversationId:', conversationId);
+        await generateChatResponse(enrichedMessages, userPhone, socket, conversationId);
         console.log('chat.socket - generateChatResponse completed');
 
         // Emit 'chat:end' when streaming is complete
