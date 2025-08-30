@@ -7,7 +7,6 @@ import { AuthRoutes } from "./app/modules/appData/auth/auth.route";
 import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 import { PostRoutes } from "./app/modules/appData/posts/post.route";
 import { FieldRoutes } from "./app/modules/appData/fields/fields.route";
-import { handleChat } from "./app/modules/chat/chat.controller";
 import { ChatRoutes } from "./app/modules/chat/chat.route";
 const app: Application = express();
 const router = express.Router();

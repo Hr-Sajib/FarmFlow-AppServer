@@ -8,6 +8,10 @@ const router = express.Router();
 router.post("/fields/:fieldId/insights",
     //  auth("admin", "farmer"), 
      fieldController.getFieldInsights);
+router.post("/fields/:fieldId/longInsights",
+    //  auth("admin", "farmer"), 
+     fieldController.getFieldLongInsights);
+     
 
 // Add a new field
 router.post("/", auth("admin", "farmer"), fieldController.addField);

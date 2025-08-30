@@ -12,8 +12,11 @@ export interface IField {
   farmerId: string; 
   region?: string; 
   fieldStatus?: "active" | "inactive" | "maintenance";
+
+  motorOn: boolean,
+  shadeOn: boolean,
+  
   createdAt?: Date;
   updatedAt?: Date;
   isDeleted:boolean;
 }
-// apply auth seperate fields in update in control level

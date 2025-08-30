@@ -41,8 +41,6 @@ router.get("/",
   // auth("admin", "farmer"), 
   postController.getAllPosts);
 
-router.get("/pdf", generateStaticPdfController);
-router.get("/xl", postController.exportPostsXlsx);
 
 
 export const PostRoutes = router;

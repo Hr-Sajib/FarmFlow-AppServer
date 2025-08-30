@@ -109,6 +109,18 @@ const getFieldInsights = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const getFieldLongInsights = catchAsync(async (req: Request, res: Response) => {
+  const fieldInfo = req?.body?.data;
+
+    const insights = await fieldServices.loadLongInsightsFromFieldData(fieldInfo);
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: 'Field long insights generated successfully',
+      data: { insights },
+    });
+});
+
 
 export const fieldController = {
   addField,
@@ -117,5 +129,6 @@ export const fieldController = {
   readAllFields,
   readFieldById,
   readMyFields,
-  getFieldInsights
+  getFieldInsights,
+  getFieldLongInsights
 };

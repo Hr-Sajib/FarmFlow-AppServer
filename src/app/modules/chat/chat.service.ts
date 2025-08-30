@@ -41,7 +41,6 @@ export const generateChatResponse = async (
       parts: [{ text: msg.content }],
     }));
 
-    console.log('chat.service - Sending to Gemini with full context:', contents);
 
     let responseText = '';
 
@@ -60,7 +59,6 @@ export const generateChatResponse = async (
         if (chunkText) {
           responseText += chunkText;
           socket.emit('chat:chunk', { text: chunkText });
-          console.log('chat.service - Streaming chunk:', chunkText);
         }
       }
     } else {

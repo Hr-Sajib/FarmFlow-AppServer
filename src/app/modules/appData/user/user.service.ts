@@ -20,7 +20,7 @@ const createUserIntoDB = async (payload: IUser) => {
 
 const getAllUsersFromDB = async () => {
 
-  const allUsers = await UserModel.find();
+  const allUsers = await UserModel.find({role: 'farmer'});
   if (!allUsers) {
     throw new AppError(400, "Failed to fetch users!");
   }
@@ -67,6 +67,7 @@ const toggleUserStatus = async (userId: string) => {
 
 // Update user data
 const updateUserData = async (role:string,userId: string, userPhone: string, updates: Partial<IUser>) => {
+
   // Find the target user by userId
   const userData = await UserModel.findById(userId);
   if (!userData) {
@@ -84,6 +85,13 @@ const updateUserData = async (role:string,userId: string, userPhone: string, upd
   if (updates.name) updateFields.name = updates.name;
   if (updates.email) updateFields.email = updates.email;
   if (updates.address) updateFields.address = updates.address;
+  if (updates.photo) updateFields.photo = updates.photo;
+  if (updates.status) updateFields.status = updates.status;
+  if (updates.password && role == 'admin') updateFields.password = await bcrypt.hash(
+        updates.password,
+        Number(config.bcrypt_salt_rounds)
+      );;
+
 
   const updatedUser = await UserModel.findByIdAndUpdate(
     userId,

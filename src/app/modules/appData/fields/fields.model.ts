@@ -78,6 +78,12 @@ const fieldSchema = new Schema<IField>(
       },
       default: "active",
     },
+    motorOn:{
+      type: Schema.Types.Boolean,
+    },
+    shadeOn:{
+      type: Schema.Types.Boolean,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
