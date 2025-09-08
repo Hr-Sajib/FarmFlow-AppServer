@@ -26,12 +26,15 @@ router.get('/', (req:Request,res:Response)=>{
   res.send('Welcome to FarmFlow app server..')
 });
 
-app.use('/user', UserRoutes);
-app.use('/auth', AuthRoutes);
-app.use('/sensorData', sensorRoutes);
-app.use('/post', PostRoutes);
-app.use('/field', FieldRoutes);
-app.use('/chat', ChatRoutes);
+
+app.use("/", router); // ✅ this was missing
+app.use("/user", UserRoutes);
+app.use("/auth", AuthRoutes);
+app.use("/sensorData", sensorRoutes);
+app.use("/post", PostRoutes);
+app.use("/field", FieldRoutes);
+app.use("/chat", ChatRoutes);
+
 
 
 app.use(globalErrorHandler);
