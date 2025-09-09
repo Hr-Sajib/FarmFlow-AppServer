@@ -17,6 +17,10 @@ const loginUserIntoDB = async (payload: TLoginUser) => {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
+  if (user?.status === "blocked") {
+    throw new AppError(httpStatus.NOT_FOUND, "You are blocked! Contact Us..");
+  }
+
 
   // Verify password
   const isPasswordValid = await bcrypt.compare(password, user.password);
