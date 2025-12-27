@@ -1,6 +1,7 @@
 import express, { Application, Request, Response } from "express";
 import cors from "cors";
-import cookieParser from 'cookie-parser'; // Import cookie-parser
+import cookieParser from "cookie-parser";
+
 import globalErrorHandler from "./app/middlewares/globalErrorhandler";
 import { UserRoutes } from "./app/modules/appData/user/user.route";
 import { AuthRoutes } from "./app/modules/appData/auth/auth.route";
@@ -8,27 +9,29 @@ import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 import { PostRoutes } from "./app/modules/appData/posts/post.route";
 import { FieldRoutes } from "./app/modules/appData/fields/fields.route";
 import { ChatRoutes } from "./app/modules/chat/chat.route";
+
 const app: Application = express();
-const router = express.Router();
 
-// parser
+/**
+ * =========================
+ * 🌍 OPEN CORS (NO CRASH)
+ * =========================
+ */
+app.use(
+  cors({
+    origin: true, // ✅ allow ANY origin dynamically
+    credentials: true, // keep working auth
+  })
+);
+
 app.use(express.json());
-app.use(cors({origin: [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://31.97.224.58:3001"
-  ], credentials: true}));
-app.use(cookieParser()); // Add this
+app.use(cookieParser());
 
-// application routes 
-
-router.get('/', (req:Request,res:Response)=>{
-  res.send('Welcome to FarmFlow app server..')
-});
-
-
-app.use("/", router); // ✅ this was missing
+/**
+ * =========================
+ * Routes
+ * =========================
+ */
 app.use("/user", UserRoutes);
 app.use("/auth", AuthRoutes);
 app.use("/sensorData", sensorRoutes);
@@ -36,9 +39,22 @@ app.use("/post", PostRoutes);
 app.use("/field", FieldRoutes);
 app.use("/chat", ChatRoutes);
 
+/**
+ * =========================
+ * Health Check
+ * =========================
+ */
+app.get("/", (req: Request, res: Response) => {
+  res.json({
+    message: "FarmFlow API is running and accessible 🌍",
+  });
+});
 
-
+/**
+ * =========================
+ * Global Error Handler (LAST)
+ * =========================
+ */
 app.use(globalErrorHandler);
-
 
 export default app;

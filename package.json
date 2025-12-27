@@ -9,7 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "prettier:fix": "npx prettier --write src",
-    "sd": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "start:prod": "node ./dist/server.js",
     "build": "tsc"
   },
