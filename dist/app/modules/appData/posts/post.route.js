@@ -28,6 +28,4 @@ router.post("/removeDislike/:postId", (0, auth_1.default)("admin", "farmer"), po
 router.get("/", 
 // auth("admin", "farmer"), 
 post_controller_1.postController.getAllPosts);
-// router.get("/pdf", generateStaticPdfController);
-// router.get("/xl", postController.exportPostsXlsx);
 exports.PostRoutes = router;

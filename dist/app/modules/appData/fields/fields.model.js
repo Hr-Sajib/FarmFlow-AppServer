@@ -73,6 +73,12 @@ const fieldSchema = new mongoose_1.Schema({
         },
         default: "active",
     },
+    motorOn: {
+        type: mongoose_1.Schema.Types.Boolean,
+    },
+    shadeOn: {
+        type: mongoose_1.Schema.Types.Boolean,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

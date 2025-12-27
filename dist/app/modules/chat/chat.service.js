@@ -24,7 +24,12 @@ const generative_ai_1 = require("@google/generative-ai");
 const config_1 = __importDefault(require("../../../config"));
 const chat_model_1 = __importDefault(require("./chat.model"));
 const genAI = new generative_ai_1.GoogleGenerativeAI(config_1.default.gemini_api_key);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+// Use one of these models - they all support generateContent
+// Best options: gemini-2.5-flash, gemini-flash-latest, or gemini-2.0-flash
+const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash', // Latest stable model
+    systemInstruction: `You are an agricultural expert specializing in farming, crop management, soil health, irrigation, and related topics. Always respond with accurate, practical advice tailored to agriculture in bangla or english based on the question language. If a question is outside the domain of agriculture, politely decline to answer with a message like: "I'm sorry, I'm specialized in agriculture and can only assist with questions related to farming, crops, or soil management. Could you ask something about agriculture?" Provide clear, concise, and professional responses to help farmers and agricultural enthusiasts.`
+});
 const generateChatResponse = (newMessages, userPhone, socket, conversationId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, e_1, _b, _c;
     try {
@@ -47,37 +52,53 @@ const generateChatResponse = (newMessages, userPhone, socket, conversationId) =>
         }
         // Map full messages to Gemini's content format
         const contents = fullMessages.map((msg) => ({
-            role: msg.role === 'user' ? 'user' : 'model', // Gemini uses 'model' for assistant
+            role: msg.role === 'user' ? 'user' : 'model',
             parts: [{ text: msg.content }],
         }));
         let responseText = '';
         if (socket) {
-            // Streaming response
-            const streamResult = yield model.generateContentStream({
-                contents,
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 1000,
-                },
-            });
+            // For socket connections, use streaming approach with generateContentStream
+            // Note: This requires the model to support streaming
             try {
-                for (var _d = true, _e = __asyncValues(streamResult.stream), _f; _f = yield _e.next(), _a = _f.done, !_a; _d = true) {
-                    _c = _f.value;
-                    _d = false;
-                    const chunk = _c;
-                    const chunkText = chunk.text();
-                    if (chunkText) {
-                        responseText += chunkText;
-                        socket.emit('chat:chunk', { text: chunkText });
+                const streamResult = yield model.generateContentStream({
+                    contents,
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1000,
+                    },
+                });
+                try {
+                    for (var _d = true, _e = __asyncValues(streamResult.stream), _f; _f = yield _e.next(), _a = _f.done, !_a; _d = true) {
+                        _c = _f.value;
+                        _d = false;
+                        const chunk = _c;
+                        const chunkText = chunk.text();
+                        if (chunkText) {
+                            responseText += chunkText;
+                            socket.emit('chat:chunk', { text: chunkText });
+                        }
                     }
                 }
-            }
-            catch (e_1_1) { e_1 = { error: e_1_1 }; }
-            finally {
-                try {
-                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+                catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                finally {
+                    try {
+                        if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+                    }
+                    finally { if (e_1) throw e_1.error; }
                 }
-                finally { if (e_1) throw e_1.error; }
+            }
+            catch (streamError) {
+                // Fallback: If streaming fails, use regular generation and emit as one chunk
+                console.warn('Streaming failed, falling back to regular generation:', streamError);
+                const result = yield model.generateContent({
+                    contents,
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1000,
+                    },
+                });
+                responseText = result.response.text();
+                socket.emit('chat:chunk', { text: responseText });
             }
         }
         else {

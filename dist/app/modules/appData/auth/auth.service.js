@@ -26,6 +26,9 @@ const loginUserIntoDB = (payload) => __awaiter(void 0, void 0, void 0, function*
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
+    if ((user === null || user === void 0 ? void 0 : user.status) === "blocked") {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "You are blocked! Contact Us..");
+    }
     // Verify password
     const isPasswordValid = yield bcrypt_1.default.compare(password, user.password);
     if (!isPasswordValid) {

@@ -30,7 +30,7 @@ const createUserIntoDB = (payload) => __awaiter(void 0, void 0, void 0, function
     return newUser;
 });
 const getAllUsersFromDB = () => __awaiter(void 0, void 0, void 0, function* () {
-    const allUsers = yield user_model_1.UserModel.find();
+    const allUsers = yield user_model_1.UserModel.find({ role: 'farmer' });
     if (!allUsers) {
         throw new AppError_1.default(400, "Failed to fetch users!");
     }
@@ -81,6 +81,13 @@ const updateUserData = (role, userId, userPhone, updates) => __awaiter(void 0, v
         updateFields.email = updates.email;
     if (updates.address)
         updateFields.address = updates.address;
+    if (updates.photo)
+        updateFields.photo = updates.photo;
+    if (updates.status)
+        updateFields.status = updates.status;
+    if (updates.password && role == 'admin')
+        updateFields.password = yield bcrypt_1.default.hash(updates.password, Number(config_1.default.bcrypt_salt_rounds));
+    ;
     const updatedUser = yield user_model_1.UserModel.findByIdAndUpdate(userId, { $set: updateFields }, { new: true });
     if (!updatedUser) {
         throw new AppError_1.default(500, "Failed to update user data!");

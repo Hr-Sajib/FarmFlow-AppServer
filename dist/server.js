@@ -30,8 +30,8 @@ exports.influxClient = new influxdb_client_1.InfluxDB({
 const httpServer = (0, http_1.createServer)(app_1.default);
 const io = new socket_io_1.Server(httpServer, {
     cors: {
-        origin: 'http://localhost:3000', // Restrict to Next.js frontend
-        methods: ['GET', 'POST'],
+        origin: "http://localhost:3000", // Restrict to Next.js frontend
+        methods: ["GET", "POST"],
     },
 });
 // Setup chat-specific Socket.IO logic
@@ -41,65 +41,22 @@ function main() {
         try {
             const conn = yield mongoose_1.default.connect(config_1.default.database_url);
             if (conn) {
-                console.log('\nMongoDB Database connected..');
+                console.log("\nMongoDB Database connected..");
             }
             const orgsApi = new influxdb_client_apis_1.OrgsAPI(exports.influxClient);
             yield orgsApi.getOrgs({ org: config_1.default.influxDB_org });
-            console.log('InfluxDB Database connected..');
+            console.log("InfluxDB Database connected..");
             // Initialize MQTT client
             (0, mqtt_service_1.initializeMqttClient)();
             // Start the HTTP & WebSocket server
-            httpServer.listen(config_1.default.port, () => {
-                console.log(`Farm-Flow app server & Socket.IO listening on port ${config_1.default.port}`);
+            httpServer.listen(config_1.default.port, "0.0.0.0", () => {
+                console.log(`Farm-Flow app server & Socket.IO listening on http://0.0.0.0:${config_1.default.port}`);
             });
         }
         catch (err) {
-            console.error('Failed to connect to databases:', err);
+            console.error("Failed to connect to databases:", err);
             process.exit(1);
         }
     });
 }
 main();
-// import config from "./config";
-// import mongoose from 'mongoose';
-// import app from "./app";
-// import { InfluxDB } from '@influxdata/influxdb-client';
-// import { OrgsAPI } from '@influxdata/influxdb-client-apis';
-// import { initializeMqttClient } from "./app/modules/sensorData/mqtt.service";
-// import http from 'http';
-// import { Server as SocketIOServer } from 'socket.io';
-// // Initialize InfluxDB client
-// const influxClient = new InfluxDB({
-//   url: config.influxDB_url as string,
-//   token: config.influxDB_token as string,
-// });
-// const server = http.createServer(app);
-// // 🔌 Initialize Socket.IO
-// const io = new SocketIOServer(server, {
-//   cors: {
-//     origin: "*", // change this for production
-//   },
-// });
-// // Make `io` available globally (or pass to modules as needed)
-// export { influxClient, io };
-// async function main() {
-//   try {
-//     const conn = await mongoose.connect(config.database_url as string);
-//     if (conn) {
-//       console.log("\nMongoDB Database connected..");
-//     }
-//     const orgsApi = new OrgsAPI(influxClient);
-//     await orgsApi.getOrgs({ org: config.influxDB_org as string });
-//     console.log("InfluxDB Database connected..");
-//     // ✅ Initialize MQTT client with Socket.IO
-//     initializeMqttClient();
-//     // 🟢 Start the HTTP & WebSocket server
-//     server.listen(config.port, () => {
-//       console.log(`Farm-Flow app server & Socket.IO listening on port ${config.port}`);
-//     });
-//   } catch (err) {
-//     console.error("Failed to connect to databases:", err);
-//     process.exit(1);
-//   }
-// }
-// main();
