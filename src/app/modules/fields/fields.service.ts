@@ -12,6 +12,7 @@ import {
   assertFarmerExists,
   getOwnedField,
 } from "./fields.utils";
+import { fetchWeatherForCoordinates } from "../../utils/openMeteo";
 
 /**
  * An admin must name the owning farmer; a farmer always becomes the owner of
@@ -104,6 +105,28 @@ const softDeleteFieldInDB = async (fieldId: string, actor: TActor) => {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to delete field!");
   }
   return deleted;
+};
+
+/**
+ * Current conditions and forecast for the field's own coordinates.
+ *
+ * Ownership is checked first, so weather cannot be used to probe whether a
+ * given field id exists. The upstream call is cached by coordinate, so several
+ * fields on one farm cost a single request.
+ */
+const getFieldWeather = async (fieldId: string, actor: TActor) => {
+  const field = await getOwnedField(fieldId, actor);
+
+  const weather = await fetchWeatherForCoordinates(
+    field.fieldLocation.latitude,
+    field.fieldLocation.longitude
+  );
+
+  return {
+    fieldId: field.fieldId,
+    fieldName: field.fieldName,
+    ...weather,
+  };
 };
 
 /* ---------------------------------------------------------------------------
@@ -260,4 +283,5 @@ export const fieldServices = {
   getFieldByIdFromDB,
   updateFieldData,
   softDeleteFieldInDB,
+  getFieldWeather,
 };

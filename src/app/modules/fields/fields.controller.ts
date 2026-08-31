@@ -84,6 +84,19 @@ const softDeleteField = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getFieldWeather = catchAsync(async (req: Request, res: Response) => {
+  const weather = await fieldServices.getFieldWeather(
+    req.params.fieldId,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Weather retrieved successfully",
+    data: weather,
+  });
+});
+
 /* ---------------------------------------------------------------------------
  * DISABLED: AI insight handlers. Re-enable alongside fieldServices'
  * loadInsightsFromFieldData / loadLongInsightsFromFieldData and their routes.
@@ -117,4 +130,5 @@ export const fieldController = {
   getFieldById,
   updateField,
   softDeleteField,
+  getFieldWeather,
 };

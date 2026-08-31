@@ -34,6 +34,13 @@ router.patch(
 
 router.delete("/:fieldId", auth("admin", "farmer"), fieldController.softDeleteField);
 
+// Current conditions and 7-day forecast for the field's coordinates.
+router.get(
+  "/:fieldId/weather",
+  auth("admin", "farmer"),
+  fieldController.getFieldWeather
+);
+
 /* ---------------------------------------------------------------------------
  * DISABLED: AI insight endpoints.
  * -------------------------------------------------------------------------*/
