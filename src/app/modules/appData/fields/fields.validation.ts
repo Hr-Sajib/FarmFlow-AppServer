@@ -117,8 +117,8 @@ const updateFieldValidationSchema = z.object({
       .optional(),
     // Desired actuator state. Previously absent, which would have rejected
     // every toggle the moment this schema was wired to the route.
-    motorOn: z.boolean({ invalid_type_error: "motorOn must be a boolean" }).optional(),
-    shadeOn: z.boolean({ invalid_type_error: "shadeOn must be a boolean" }).optional(),
+    isMotorOn: z.boolean({ invalid_type_error: "isMotorOn must be a boolean" }).optional(),
+    isShadeOn: z.boolean({ invalid_type_error: "isShadeOn must be a boolean" }).optional(),
   }).strict(),
 });
 

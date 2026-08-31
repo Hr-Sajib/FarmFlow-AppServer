@@ -41,8 +41,8 @@ export interface IField {
    * what was *asked for* — the device does not acknowledge, so they are not
    * proof of the physical state. Reported state belongs to a later shadow model.
    */
-  motorOn: boolean;
-  shadeOn: boolean;
+  isMotorOn: boolean;
+  isShadeOn: boolean;
 
   createdAt?: Date;
   updatedAt?: Date;

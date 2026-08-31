@@ -91,11 +91,11 @@ const fieldSchema = new Schema<IField>(
     },
     // Desired state only — the device does not acknowledge commands, so these
     // record what was asked for, not what the hardware is actually doing.
-    motorOn: {
+    isMotorOn: {
       type: Boolean,
       default: false,
     },
-    shadeOn: {
+    isShadeOn: {
       type: Boolean,
       default: false,
     },
