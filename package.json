@@ -12,7 +12,8 @@
     "dev": "PORT=5002 ts-node-dev --respawn --transpile-only src/server.ts",
     "start:prod": "node ./dist/server.js",
     "build": "tsc",
-    "seed": "ts-node-dev --transpile-only src/scripts/seed.ts"
+    "seed": "ts-node-dev --transpile-only src/scripts/seed.ts",
+    "llm:check": "ts-node-dev --transpile-only src/scripts/llmCheck.ts"
   },
   "keywords": [],
   "author": "",
@@ -56,6 +57,7 @@
     "mqtt": "^5.12.0",
     "multer": "^2.3.0",
     "nodemailer": "^9.1.0",
+    "openai": "^7.8.0",
     "puppeteer": "^24.11.2",
     "sharp": "^0.35.4",
     "socket.io": "^4.8.1",

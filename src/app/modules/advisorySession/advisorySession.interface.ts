@@ -46,6 +46,15 @@ export interface IAdvisorySession {
 
   chatHistory: IAdvisoryMessage[];
 
+  /**
+   * Compressed stand-in for the leading `summarizedMessageCount` messages of
+   * chatHistory. Once a transcript grows past the configured word budget the
+   * older turns are folded into this summary and no longer sent verbatim, so
+   * prompt size stays bounded however long the conversation runs.
+   */
+  contextSummary?: string;
+  summarizedMessageCount: number;
+
   feedbackText?: string;
   feedbackStarCount?: number; // 1–5
 

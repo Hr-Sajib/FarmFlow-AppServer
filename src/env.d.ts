@@ -13,6 +13,12 @@ declare namespace NodeJS {
     INFLUXDB_TOKEN: string;
     INFLUXDB_ORG: string;
     INFLUXDB_BUCKET: string;
+    OPENROUTER_API_KEY?: string;
+    OPENROUTER_BASE_URL?: string;
+    OPENROUTER_MODEL?: string;
+    OPENROUTER_RPM?: string;
+    ADVISORY_CONTEXT_WORD_LIMIT?: string;
+    ADVISORY_KEEP_RECENT?: string;
     ADMIN_EMAIL?: string;
     ADMIN_PASSWORD?: string;
     ADMIN_NAME?: string;

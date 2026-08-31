@@ -22,6 +22,18 @@ export default {
   gemini_api_key : process.env.GEMINI_API_KEY,
   groq_api_key : process.env.GROQ_API_KEY,
 
+  openrouter: {
+    api_key: process.env.OPENROUTER_API_KEY,
+    base_url: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+    model: process.env.OPENROUTER_MODEL || 'minimax/minimax-m3:free',
+    // The free tier allows 20 requests/minute; stay just under it.
+    max_requests_per_minute: parseInt(process.env.OPENROUTER_RPM || '18', 10),
+    // Total words of transcript tolerated before older turns are compressed.
+    context_word_limit: parseInt(process.env.ADVISORY_CONTEXT_WORD_LIMIT || '2000', 10),
+    // How many recent messages stay verbatim after a compression pass.
+    keep_recent_messages: parseInt(process.env.ADVISORY_KEEP_RECENT || '6', 10),
+  },
+
   admin_email: process.env.ADMIN_EMAIL,
   admin_password: process.env.ADMIN_PASSWORD,
   admin_name: process.env.ADMIN_NAME || 'FarmFlow Admin',

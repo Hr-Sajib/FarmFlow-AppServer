@@ -13,7 +13,12 @@ import {
   assertCanViewSession,
   assertIsOwnerFarmer,
   assertExpertIsVerified,
+  buildAdvisoryPrompt,
+  buildCompressionPrompt,
+  transcriptWordCount,
 } from "./advisorySession.utils";
+import { createChatCompletion } from "../../utils/openRouter";
+import config from "../../../config";
 
 const createSessionIntoDB = async (
   payload: Partial<IAdvisorySession>,
@@ -155,6 +160,88 @@ const appendMessageToSession = async (
   return updated;
 };
 
+
+/**
+ * Folds the older half of a long transcript into a single summary.
+ *
+ * Only the turns beyond the most recent few are compressed, so the immediate
+ * back-and-forth stays verbatim while total prompt size remains bounded no
+ * matter how long the conversation runs. Costs one model call of its own,
+ * which is why it runs only once the word budget is actually exceeded.
+ */
+const compressSessionContext = async (sessionId: string) => {
+  const session = await AdvisorySessionModel.findById(sessionId);
+  if (!session) return;
+
+  const alreadySummarized = session.summarizedMessageCount ?? 0;
+  const pending = session.chatHistory.slice(alreadySummarized);
+
+  if (transcriptWordCount(pending) <= config.openrouter.context_word_limit) {
+    return;
+  }
+
+  const keepRecent = config.openrouter.keep_recent_messages;
+  const toCompress = pending.slice(0, Math.max(0, pending.length - keepRecent));
+  if (toCompress.length === 0) return;
+
+  // Feed the previous summary in alongside, so nothing is lost across
+  // successive compressions.
+  const prompt = buildCompressionPrompt(toCompress);
+  if (session.contextSummary) {
+    prompt.splice(1, 0, {
+      role: "system",
+      content: `Earlier summary to fold in:\n${session.contextSummary}`,
+    });
+  }
+
+  const summary = await createChatCompletion(prompt, {
+    temperature: 0.2,
+    maxTokens: 400,
+  });
+
+  await AdvisorySessionModel.findByIdAndUpdate(sessionId, {
+    $set: {
+      contextSummary: summary,
+      summarizedMessageCount: alreadySummarized + toCompress.length,
+    },
+  });
+};
+
+/**
+ * Produces the AI advisor's next turn and appends it to the transcript.
+ *
+ * Returns null when a human expert has taken the session over — once escalated,
+ * the AI stops answering so the two are never talking at once.
+ */
+const generateAiReplyForSession = async (
+  sessionId: string
+): Promise<IAdvisoryMessage | null> => {
+  const session = await AdvisorySessionModel.findOne({
+    _id: sessionId,
+    isDeleted: false,
+  });
+  if (!session) {
+    throw new AppError(httpStatus.NOT_FOUND, "Advisory session not found");
+  }
+  if (session.status !== "ai_active") return null;
+
+  const replyText = await createChatCompletion(buildAdvisoryPrompt(session));
+
+  const message: IAdvisoryMessage = {
+    senderRole: "ai",
+    messageType: "text",
+    messageContent: replyText,
+    sentAt: new Date(),
+  };
+
+  await appendMessageToSession(sessionId, message);
+
+  // Compress after appending, so the next turn starts from a bounded context.
+  await compressSessionContext(sessionId);
+
+  return message;
+};
+
 export const advisorySessionServices = {
   createSessionIntoDB,
   getAllSessionsFromDB,
@@ -164,4 +251,5 @@ export const advisorySessionServices = {
   assignExpertToSession,
   softDeleteSessionInDB,
   appendMessageToSession,
+  generateAiReplyForSession,
 };

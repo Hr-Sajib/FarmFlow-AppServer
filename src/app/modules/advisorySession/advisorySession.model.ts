@@ -69,6 +69,9 @@ const advisorySessionSchema = new Schema<IAdvisorySession>(
     // collection keyed by session id — the 16MB document cap is the limit.
     chatHistory: { type: [advisoryMessageSchema], default: [] },
 
+    contextSummary: { type: String, trim: true },
+    summarizedMessageCount: { type: Number, default: 0 },
+
     feedbackText: { type: String, trim: true },
     feedbackStarCount: {
       type: Number,

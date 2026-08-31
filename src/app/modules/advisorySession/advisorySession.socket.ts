@@ -24,6 +24,36 @@ const messageSchema = z.object({
 const roomOf = (sessionId: string) => `session:${sessionId}`;
 
 /**
+ * Generates the AI turn and broadcasts it. Failures are reported to the room
+ * but never rethrown: the farmer's own message is already persisted, and a
+ * model outage should not look like their message was lost.
+ */
+const emitAiReply = async (
+  nsp: ReturnType<Server["of"]>,
+  socket: Socket,
+  sessionId: string
+): Promise<void> => {
+  nsp.to(roomOf(sessionId)).emit("session:ai-thinking", { sessionId });
+
+  try {
+    const message = await advisorySessionServices.generateAiReplyForSession(
+      sessionId
+    );
+    // null means a human expert has taken over; the AI stays quiet.
+    if (message) {
+      nsp.to(roomOf(sessionId)).emit("session:message", { sessionId, message });
+    }
+  } catch (error) {
+    socket.emit("session:error", {
+      message:
+        error instanceof Error ? error.message : "The advisor is unavailable",
+    });
+  } finally {
+    nsp.to(roomOf(sessionId)).emit("session:ai-thinking-done", { sessionId });
+  }
+};
+
+/**
  * Real-time transcript for advisory sessions.
  *
  * Mounted on its own namespace so its handshake authentication does not affect
@@ -87,6 +117,12 @@ export const setupAdvisorySocket = (io: Server): void => {
           status: session.status,
           messages: session.chatHistory,
         });
+
+        // First join of a brand-new session: the advisor opens by responding to
+        // the problem statement and photographs supplied at creation.
+        if (session.chatHistory.length === 0 && session.status === "ai_active") {
+          await emitAiReply(nsp, socket, parsed.data.sessionId);
+        }
       } catch (error) {
         socket.emit("session:error", {
           message: error instanceof Error ? error.message : "Could not join session",
@@ -130,6 +166,12 @@ export const setupAdvisorySocket = (io: Server): void => {
         await advisorySessionServices.appendMessageToSession(sessionId, message);
 
         nsp.to(roomOf(sessionId)).emit("session:message", { sessionId, message });
+
+        // The AI answers only while it still owns the session; after an expert
+        // is assigned the status changes and it falls silent.
+        if (session.status === "ai_active" && message.senderRole === "farmer") {
+          await emitAiReply(nsp, socket, sessionId);
+        }
       } catch (error) {
         socket.emit("session:error", {
           message: error instanceof Error ? error.message : "Could not send message",
@@ -144,10 +186,3 @@ export const setupAdvisorySocket = (io: Server): void => {
     });
   });
 };
-
-/*
- * Not implemented yet: when a farmer posts while status is "ai_active", the AI
- * reply would be generated here, appended with senderRole "ai", and broadcast
- * on the same "session:message" event. Deferred until the advisory layer moves
- * to OpenRouter.
- */
