@@ -1,194 +1,145 @@
-// src/services/fields/fields.service.ts
+// src/app/modules/fields/fields.service.ts
+
+import httpStatus from "http-status";
+import axios from "axios";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import { UserModel } from "../user/user.model";
 import AppError from "../../errors/AppError";
-import httpStatus from "http-status";
 import { IField } from "./fields.interface";
 import { generateFieldId } from "../../utils/generateIds";
 import { FieldModel } from "./fields.model";
-import { ClientSession } from "mongoose";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import config from "../../../config";
-import axios from "axios";
-import Groq from "groq-sdk";
 
-
-// Fixed: Use correct model name + config key
 const genAI = new GoogleGenerativeAI(config.gemini_api_key as string);
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash", // Fixed: This works in 2025
-});
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-const addField = async (fieldData: IField, userId: string, role: string) => {
-  const user = await UserModel.findOne({ _id: userId, isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
+/** The authenticated caller, resolved by the auth middleware. */
+export type TActor = {
+  userId: string;
+  role: string;
+  userCode: string;
+};
 
-  fieldData.farmerId = user.userCode;
-  fieldData.fieldId = await generateFieldId();
+const isAdmin = (actor: TActor) => actor.role === "admin";
 
-  const existingField = await FieldModel.findOne({ fieldId: fieldData.fieldId });
-  if (existingField) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Field ID already exists!");
-  }
-
-  const session: ClientSession = await FieldModel.startSession();
-  try {
-    session.startTransaction();
-
-    const newField = await FieldModel.create([fieldData], { session });
-    if (!newField[0]) {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to create field!");
-    }
-
-    const updatedUser = await UserModel.findOneAndUpdate(
-      { farmerId: fieldData.farmerId, isDeleted: false },
-      { $addToSet: { fieldIds: newField[0]._id } },
-      { new: true, session }
-    );
-
-    if (role !== "admin" && fieldData.farmerId !== user.userCode) {
-      throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only add to your own fields!");
-    }
-    if (!updatedUser) {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to update user's fieldIds!");
-    }
-
-    await session.commitTransaction();
-    return newField[0];
-  } catch (error) {
-    await session.abortTransaction();
-    throw error instanceof AppError ? error : new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to add field!");
-  } finally {
-    session.endSession();
+/** Confirms a userCode belongs to a real, active farmer before assigning ownership. */
+const assertFarmerExists = async (farmerCode: string): Promise<void> => {
+  const farmer = await UserModel.findOne({
+    userCode: farmerCode,
+    role: "farmer",
+    isDeleted: false,
+  });
+  if (!farmer) {
+    throw new AppError(httpStatus.NOT_FOUND, `No active farmer with id ${farmerCode}`);
   }
 };
 
-const removeField = async (fieldId: string, userId: string, role: string) => {
-  const user = await UserModel.findOne({ _id: userId, isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
-
+/** Loads a field and enforces that a non-admin caller owns it. */
+const getOwnedField = async (fieldId: string, actor: TActor) => {
   const field = await FieldModel.findOne({ fieldId, isDeleted: false });
   if (!field) {
     throw new AppError(httpStatus.NOT_FOUND, "Field not found!");
   }
-
-  if (role !== "admin" && field.farmerId !== user.userCode) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only delete your own fields!");
+  if (!isAdmin(actor) && field.farmerId !== actor.userCode) {
+    throw new AppError(httpStatus.FORBIDDEN, "This field does not belong to you");
   }
-
-  const session: ClientSession = await FieldModel.startSession();
-  try {
-    session.startTransaction();
-
-    const updatedField = await FieldModel.findOneAndUpdate(
-      { fieldId, isDeleted: false },
-      { isDeleted: true },
-      { new: true, session }
-    );
-
-    if (!updatedField) {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to delete field!");
-    }
-
-    const updatedUser = await UserModel.findOneAndUpdate(
-      { farmerId: field.farmerId, isDeleted: false },
-      { $pull: { fieldIds: field._id } },
-      { new: true, session }
-    );
-
-    if (!updatedUser) {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to update user's fieldIds!");
-    }
-
-    await session.commitTransaction();
-    return updatedField;
-  } catch (error) {
-    await session.abortTransaction();
-    throw error instanceof AppError ? error : new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to delete field!");
-  } finally {
-    session.endSession();
-  }
+  return field;
 };
 
-const updateField = async (fieldId: string, fieldData: Partial<IField>, userId: string, role: string) => {
-  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
+/**
+ * An admin must name the owning farmer; a farmer always becomes the owner of
+ * what they create, and a farmerId in their payload is rejected rather than
+ * ignored so an attempt to assign a field elsewhere is not silently dropped.
+ */
+const addField = async (fieldData: IField, actor: TActor) => {
+  if (isAdmin(actor)) {
+    if (!fieldData.farmerId) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "farmerId is required when an admin creates a field"
+      );
+    }
+    await assertFarmerExists(fieldData.farmerId);
+  } else {
+    if (fieldData.farmerId && fieldData.farmerId !== actor.userCode) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        "You can only create fields for yourself"
+      );
+    }
+    fieldData.farmerId = actor.userCode;
   }
 
-  const field = await FieldModel.findOne({ fieldId: fieldId, isDeleted: false });
-  if (!field) {
-    throw new AppError(httpStatus.NOT_FOUND, "Field not found!");
-  }
+  fieldData.fieldId = await generateFieldId();
 
-  if (role !== "admin" && field.farmerId !== user.userCode) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only update your own fields!");
+  return FieldModel.create(fieldData);
+};
+
+const removeField = async (fieldId: string, actor: TActor) => {
+  await getOwnedField(fieldId, actor);
+
+  const deleted = await FieldModel.findOneAndUpdate(
+    { fieldId, isDeleted: false },
+    { isDeleted: true },
+    { new: true }
+  );
+
+  if (!deleted) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to delete field!");
   }
+  return deleted;
+};
+
+const updateField = async (
+  fieldId: string,
+  fieldData: Partial<IField>,
+  actor: TActor
+) => {
+  await getOwnedField(fieldId, actor);
 
   if (fieldData.fieldId) {
     throw new AppError(httpStatus.BAD_REQUEST, "Field ID cannot be updated!");
   }
 
+  // Reassigning a field to another farmer is an ownership transfer, so it is
+  // restricted to admins.
   if (fieldData.farmerId) {
-    const newFarmer = await UserModel.findOne({ farmerId: fieldData.farmerId, isDeleted: false });
-    if (!newFarmer) {
-      throw new AppError(httpStatus.NOT_FOUND, "New farmer not found!");
+    if (!isAdmin(actor)) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        "Only an admin can transfer a field to another farmer"
+      );
     }
-
-    await UserModel.findOneAndUpdate(
-      { farmerId: fieldData.farmerId, isDeleted: false },
-      { $addToSet: { fieldIds: field._id } },
-      { new: true }
-    );
-
-    await UserModel.findOneAndUpdate(
-      { farmerId: field.farmerId, isDeleted: false },
-      { $pull: { fieldIds: field._id } },
-      { new: true }
-    );
+    await assertFarmerExists(fieldData.farmerId);
   }
 
-  const updatedField = await FieldModel.findOneAndUpdate(
+  const updated = await FieldModel.findOneAndUpdate(
     { fieldId, isDeleted: false },
     { $set: fieldData },
-    { new: true }
+    { new: true, runValidators: true }
   );
 
-  if (!updatedField) {
+  if (!updated) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to update field!");
   }
-
-  return updatedField;
+  return updated;
 };
 
-const readAllFields = async () => {
-  const fields = await FieldModel.find({ isDeleted: false });
-  return fields;
+/** Admin-only listing; route guards enforce that. */
+const readAllFields = async (filters: { farmerId?: string } = {}) => {
+  const query: Record<string, unknown> = { isDeleted: false };
+  if (filters.farmerId) query.farmerId = filters.farmerId;
+  return FieldModel.find(query).sort({ createdAt: -1 });
 };
 
-const readMyFieldsFromDB = async (userId: string) => {
-  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
+const readMyFieldsFromDB = async (actor: TActor) =>
+  FieldModel.find({ farmerId: actor.userCode, isDeleted: false }).sort({
+    createdAt: -1,
+  });
 
-  const targetFarmerId = user.userCode;
-
-  const fields = await FieldModel.find({ farmerId: targetFarmerId });
-  return fields;
-};
-
-const readFieldById = async (fieldId: string) => {
-  const field = await FieldModel.findOne({ fieldId, isDeleted: false });
-  if (!field) {
-    throw new AppError(httpStatus.NOT_FOUND, "Field not found!");
-  }
-  return field;
-};
+const readFieldById = async (fieldId: string, actor: TActor) =>
+  getOwnedField(fieldId, actor);
 
 export type TFieldInfo = {
   fieldCrop?: string;

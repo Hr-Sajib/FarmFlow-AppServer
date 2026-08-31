@@ -42,6 +42,13 @@ const createFieldValidationSchema = z.object({
       .trim()
       .min(1, "Region cannot be empty")
       .optional(),
+    // Required when an admin creates a field; ignored (and rejected if it
+    // names someone else) when a farmer does.
+    farmerId: z
+      .string({ invalid_type_error: "Farmer ID must be a string" })
+      .trim()
+      .regex(/^farmer[0-9]{8}$/, { message: 'Farmer ID must look like "farmer12345678"' })
+      .optional(),
     environmentType: z
       .enum(["open_field", "greenhouse", "net_house"], {
         errorMap: () => ({ message: "Environment type must be one of: open_field, greenhouse, net_house" }),

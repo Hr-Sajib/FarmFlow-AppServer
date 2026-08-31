@@ -1,35 +1,51 @@
 import express from "express";
 import auth from "../../middlewares/auth";
+import validateRequest from "../../middlewares/validateRequest";
 import { fieldController } from "./fields.controller";
+import { FieldValidation } from "./fields.validation";
 
 const router = express.Router();
 
-// Get AI-generated insights for a specific field
-router.post("/fields/:fieldId/insights",
-    //  auth("admin", "farmer"), 
-     fieldController.getFieldInsights);
-router.post("/fields/:fieldId/longInsights",
-    //  auth("admin", "farmer"), 
-     fieldController.getFieldLongInsights);
-     
+/**
+ * "/myFields" is declared before "/:fieldId" so it is not captured as a field id.
+ */
 
-// Add a new field
-router.post("/", auth("admin", "farmer"), fieldController.addField);
+// Admin only — listing every farm's fields.
+router.get("/", auth("admin"), fieldController.readAllFields);
 
-// Soft delete a field
+// Farmer only — their own fields.
+router.get("/myFields", auth("farmer"), fieldController.readMyFields);
+
+// Admin any field; farmer only their own (enforced in the service).
+router.get("/:fieldId", auth("admin", "farmer"), fieldController.readFieldById);
+
+// Admin must supply farmerId; a farmer is assigned as owner automatically.
+router.post(
+  "/",
+  auth("admin", "farmer"),
+  validateRequest(FieldValidation.createFieldValidationSchema),
+  fieldController.addField
+);
+
+router.patch(
+  "/:fieldId",
+  auth("admin", "farmer"),
+  validateRequest(FieldValidation.updateFieldValidationSchema),
+  fieldController.updateField
+);
+
 router.delete("/:fieldId", auth("admin", "farmer"), fieldController.removeField);
 
-// Update a field
-router.patch("/:fieldId", auth("admin", "farmer"), fieldController.updateField);
-
-
-// Get all fields (admin-only or all fields for the system)
-router.get("/", auth("admin", "farmer"), fieldController.readAllFields);
-
-// Get fields owned by the authenticated user
-router.get("/myFields", auth("admin", "farmer"), fieldController.readMyFields);
-
-// Get a specific field by fieldId
-router.get("/:fieldId", auth("admin", "farmer"), fieldController.readFieldById);
+// LLM-backed insights. Auth was previously commented out, leaving these open.
+router.post(
+  "/:fieldId/insights",
+  auth("admin", "farmer"),
+  fieldController.getFieldInsights
+);
+router.post(
+  "/:fieldId/longInsights",
+  auth("admin", "farmer"),
+  fieldController.getFieldLongInsights
+);
 
 export const FieldRoutes = router;

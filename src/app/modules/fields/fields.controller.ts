@@ -1,19 +1,19 @@
 import { Request, Response } from "express";
+import httpStatus from "http-status";
+
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
-import httpStatus from "http-status";
-import AppError from "../../errors/AppError";
-import { FieldValidation } from "./fields.validation";
-import { fieldServices } from "./fields.service";
+import { fieldServices, TActor } from "./fields.service";
 
-// Add a new field
+/** Every handler resolves the caller from the verified token, never the body. */
+const actorOf = (req: Request): TActor => ({
+  userId: req.user.userId,
+  role: req.user.role,
+  userCode: req.user.userCode,
+});
+
 const addField = catchAsync(async (req: Request, res: Response) => {
-  // Validate request body using Zod schema
-  const fieldData = req.body;
-  const userId = req.user.userId;
-
-  const newField = await fieldServices.addField(fieldData, userId, req?.user?.role);
-
+  const newField = await fieldServices.addField(req.body, actorOf(req));
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -22,14 +22,11 @@ const addField = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// Soft delete a field
 const removeField = catchAsync(async (req: Request, res: Response) => {
-  const { fieldId } = req.params;
-  const userId = req.user.userId;
-  const role = req.user.role;
-
-  const deletedField = await fieldServices.removeField(fieldId, userId, role);
-
+  const deletedField = await fieldServices.removeField(
+    req.params.fieldId,
+    actorOf(req)
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -38,15 +35,12 @@ const removeField = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// Update a field
 const updateField = catchAsync(async (req: Request, res: Response) => {
-  const { fieldId } = req.params;
-  const fieldData = req.body;
-  const userId = req.user.userId;
-  const role = req.user.role;
-
-  const updatedField = await fieldServices.updateField(fieldId, fieldData, userId, role);
-
+  const updatedField = await fieldServices.updateField(
+    req.params.fieldId,
+    req.body,
+    actorOf(req)
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -55,10 +49,9 @@ const updateField = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// Read all fields
 const readAllFields = catchAsync(async (req: Request, res: Response) => {
-  const fields = await fieldServices.readAllFields();
-
+  const { farmerId } = req.query as { farmerId?: string };
+  const fields = await fieldServices.readAllFields({ farmerId });
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -67,27 +60,21 @@ const readAllFields = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// Read all fields
 const readMyFields = catchAsync(async (req: Request, res: Response) => {
-  const fields = await fieldServices.readMyFieldsFromDB(req.user?.userId);
-
+  const fields = await fieldServices.readMyFieldsFromDB(actorOf(req));
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Your Fields retrieved successfully",
+    message: "Your fields retrieved successfully",
     data: fields,
   });
 });
 
-// Read a specific field by fieldId
 const readFieldById = catchAsync(async (req: Request, res: Response) => {
-  const { fieldId } = req.params;
-
-  const field = await fieldServices.readFieldById(fieldId);
-  if (!field) {
-    throw new AppError(httpStatus.NOT_FOUND, "Field not found!");
-  }
-
+  const field = await fieldServices.readFieldById(
+    req.params.fieldId,
+    actorOf(req)
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -96,31 +83,28 @@ const readFieldById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 const getFieldInsights = catchAsync(async (req: Request, res: Response) => {
-  const fieldInfo = req?.body?.data;
-
-    const insights = await fieldServices.loadInsightsFromFieldData(fieldInfo);
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: 'Field insights generated successfully',
-      data: { insights },
-    });
+  // Ownership is checked before spending an LLM call on someone else's field.
+  await fieldServices.readFieldById(req.params.fieldId, actorOf(req));
+  const insights = await fieldServices.loadInsightsFromFieldData(req.body.data);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Field insights generated successfully",
+    data: { insights },
+  });
 });
 
 const getFieldLongInsights = catchAsync(async (req: Request, res: Response) => {
-  const fieldInfo = req?.body?.data;
-
-    const insights = await fieldServices.loadLongInsightsFromFieldData(fieldInfo);
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: 'Field long insights generated successfully',
-      data: { insights },
-    });
+  await fieldServices.readFieldById(req.params.fieldId, actorOf(req));
+  const insights = await fieldServices.loadLongInsightsFromFieldData(req.body.data);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Field long insights generated successfully",
+    data: { insights },
+  });
 });
-
 
 export const fieldController = {
   addField,
@@ -130,5 +114,5 @@ export const fieldController = {
   readFieldById,
   readMyFields,
   getFieldInsights,
-  getFieldLongInsights
+  getFieldLongInsights,
 };
