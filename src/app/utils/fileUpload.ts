@@ -2,7 +2,9 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import multer from "multer";
 import { Request } from "express";
 import { extname } from "path";
@@ -194,7 +196,10 @@ export const uploadSingleFileToS3 = async (
   }
 
   return {
-    url: `https://${bucket}.s3.${config.aws.aws_region}.amazonaws.com/${key}`,
+    // A proxy URL rather than the direct S3 one: the bucket stays private, and
+    // a stored link keeps working because the signature is minted on request
+    // instead of being baked into the saved value.
+    url: `${config.api_origin}/upload/file/${key}`,
     key,
     originalName: file.originalname,
     size: processed.buffer.length,
@@ -239,12 +244,31 @@ export const deleteFileFromS3 = async (key: string): Promise<void> => {
   }
 };
 
+/**
+ * Signed, time-limited read URL. Generated per request so the bucket needs no
+ * public-read policy.
+ */
+export const getSignedReadUrl = async (
+  key: string,
+  expiresInSeconds = 3600
+): Promise<string> =>
+  getSignedUrl(
+    s3Client,
+    new GetObjectCommand({
+      Bucket: config.aws.aws_s3_bucket_name as string,
+      Key: key,
+    }),
+    { expiresIn: expiresInSeconds }
+  );
+
 /** Recovers the S3 key from a stored URL, for deletes. */
 export const extractKeyFromUrl = (url: string): string => {
   const bucket = config.aws.aws_s3_bucket_name as string;
   const region = config.aws.aws_region as string;
 
   const patterns = [
+    // the proxy form this app now stores
+    new RegExp(`/upload/file/(.+)$`),
     new RegExp(`^https://${bucket}\\.s3\\.${region}\\.amazonaws\\.com/(.+)$`),
     new RegExp(`^https://${bucket}\\.s3-${region}\\.amazonaws\\.com/(.+)$`),
     new RegExp(`^https://s3\\.${region}\\.amazonaws\\.com/${bucket}/(.+)$`),
@@ -255,7 +279,7 @@ export const extractKeyFromUrl = (url: string): string => {
     if (match) return decodeURIComponent(match[1]);
   }
 
-  throw new AppError(httpStatus.BAD_REQUEST, "Unrecognised S3 URL");
+  throw new AppError(httpStatus.BAD_REQUEST, "Unrecognised file URL");
 };
 
 /** Best-effort cleanup when a write fails after its files were already stored. */

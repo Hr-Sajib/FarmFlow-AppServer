@@ -29,6 +29,8 @@ export default {
     keep_recent_messages: parseInt(process.env.ADVISORY_KEEP_RECENT || '6', 10),
   },
 
+  api_origin: process.env.API_ORIGIN || `http://localhost:${process.env.PORT || 5002}`,
+
   client_origin: process.env.CLIENT_ORIGIN || 'http://localhost:3002',
 
   admin_email: process.env.ADMIN_EMAIL,

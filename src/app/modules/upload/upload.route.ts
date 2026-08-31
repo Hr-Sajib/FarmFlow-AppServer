@@ -36,6 +36,18 @@ router.post(
   uploadController.uploadFiles
 );
 
+/**
+ * Public for images so next/image can fetch them; personal documents require a
+ * session. Split by prefix rather than by a query flag so the rule cannot be
+ * sidestepped from the client.
+ */
+router.get(
+  "/file/documents/*key",
+  auth("admin", "farmer", "expert"),
+  uploadController.serveFile
+);
+router.get("/file/*key", uploadController.serveFile);
+
 router.delete(
   "/",
   auth("admin", "farmer", "expert"),

@@ -9,6 +9,7 @@ import {
   deleteFileFromS3,
   extractKeyFromUrl,
   validateFiles,
+  getSignedReadUrl,
 } from "../../utils/fileUpload";
 import { TUploadCategory } from "./upload.validation";
 
@@ -77,7 +78,38 @@ const deleteFile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+/**
+ * Serves a stored object by redirecting to a short-lived signed URL, so the
+ * bucket itself stays private.
+ *
+ * Images are readable without a session because Next.js fetches them from its
+ * own server when optimising, and that request carries no user cookie. The
+ * keys contain 12 random bytes, so they are not enumerable. Anything under
+ * `documents/` is different — expert credentials are personal, so those
+ * require an authenticated caller (enforced on the route).
+ */
+const serveFile = catchAsync(async (req: Request, res: Response) => {
+  // Express 5 captures a named wildcard as an array of path segments, so the
+  // key has to be rejoined before it means anything to S3.
+  const raw = req.params.key as unknown as string | string[] | undefined;
+  const key = Array.isArray(raw) ? raw.join("/") : raw;
+
+  if (!key) {
+    throw new AppError(httpStatus.BAD_REQUEST, "No file key given");
+  }
+
+  // "documents/" is served by a route that requires auth; a caller must not be
+  // able to reach it through the public route by escaping the prefix.
+  if (key.includes("..")) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Invalid file key");
+  }
+
+  const signed = await getSignedReadUrl(key, 3600);
+  res.redirect(302, signed);
+});
+
 export const uploadController = {
+  serveFile,
   uploadFiles,
   deleteFile,
 };
