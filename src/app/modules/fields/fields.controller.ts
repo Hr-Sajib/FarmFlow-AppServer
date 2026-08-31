@@ -3,7 +3,8 @@ import httpStatus from "http-status";
 
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
-import { fieldServices, TActor } from "./fields.service";
+import { fieldServices } from "./fields.service";
+import { TActor } from "./fields.utils";
 
 /** Every handler resolves the caller from the verified token, never the body. */
 const actorOf = (req: Request): TActor => ({
@@ -12,8 +13,8 @@ const actorOf = (req: Request): TActor => ({
   userCode: req.user.userCode,
 });
 
-const addField = catchAsync(async (req: Request, res: Response) => {
-  const newField = await fieldServices.addField(req.body, actorOf(req));
+const createField = catchAsync(async (req: Request, res: Response) => {
+  const newField = await fieldServices.createFieldIntoDB(req.body, actorOf(req));
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -22,21 +23,42 @@ const addField = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const removeField = catchAsync(async (req: Request, res: Response) => {
-  const deletedField = await fieldServices.removeField(
+const getAllFields = catchAsync(async (req: Request, res: Response) => {
+  const { farmerId } = req.query as { farmerId?: string };
+  const fields = await fieldServices.getAllFieldsFromDB({ farmerId });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Fields retrieved successfully",
+    data: fields,
+  });
+});
+
+const getMyFields = catchAsync(async (req: Request, res: Response) => {
+  const fields = await fieldServices.getMyFieldsFromDB(actorOf(req));
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Your fields retrieved successfully",
+    data: fields,
+  });
+});
+
+const getFieldById = catchAsync(async (req: Request, res: Response) => {
+  const field = await fieldServices.getFieldByIdFromDB(
     req.params.fieldId,
     actorOf(req)
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Field deleted successfully",
-    data: deletedField,
+    message: "Field retrieved successfully",
+    data: field,
   });
 });
 
 const updateField = catchAsync(async (req: Request, res: Response) => {
-  const updatedField = await fieldServices.updateField(
+  const updatedField = await fieldServices.updateFieldData(
     req.params.fieldId,
     req.body,
     actorOf(req)
@@ -49,70 +71,50 @@ const updateField = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const readAllFields = catchAsync(async (req: Request, res: Response) => {
-  const { farmerId } = req.query as { farmerId?: string };
-  const fields = await fieldServices.readAllFields({ farmerId });
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Fields retrieved successfully",
-    data: fields,
-  });
-});
-
-const readMyFields = catchAsync(async (req: Request, res: Response) => {
-  const fields = await fieldServices.readMyFieldsFromDB(actorOf(req));
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Your fields retrieved successfully",
-    data: fields,
-  });
-});
-
-const readFieldById = catchAsync(async (req: Request, res: Response) => {
-  const field = await fieldServices.readFieldById(
+const softDeleteField = catchAsync(async (req: Request, res: Response) => {
+  const deletedField = await fieldServices.softDeleteFieldInDB(
     req.params.fieldId,
     actorOf(req)
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Field retrieved successfully",
-    data: field,
+    message: "Field deleted successfully",
+    data: deletedField,
   });
 });
 
-const getFieldInsights = catchAsync(async (req: Request, res: Response) => {
-  // Ownership is checked before spending an LLM call on someone else's field.
-  await fieldServices.readFieldById(req.params.fieldId, actorOf(req));
-  const insights = await fieldServices.loadInsightsFromFieldData(req.body.data);
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Field insights generated successfully",
-    data: { insights },
-  });
-});
+/* ---------------------------------------------------------------------------
+ * DISABLED: AI insight handlers. Re-enable alongside fieldServices'
+ * loadInsightsFromFieldData / loadLongInsightsFromFieldData and their routes.
+ * -------------------------------------------------------------------------*/
+// const getFieldInsights = catchAsync(async (req: Request, res: Response) => {
+//   await fieldServices.getFieldByIdFromDB(req.params.fieldId, actorOf(req));
+//   const insights = await fieldServices.loadInsightsFromFieldData(req.body.data);
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: "Field insights generated successfully",
+//     data: { insights },
+//   });
+// });
 
-const getFieldLongInsights = catchAsync(async (req: Request, res: Response) => {
-  await fieldServices.readFieldById(req.params.fieldId, actorOf(req));
-  const insights = await fieldServices.loadLongInsightsFromFieldData(req.body.data);
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Field long insights generated successfully",
-    data: { insights },
-  });
-});
+// const getFieldLongInsights = catchAsync(async (req: Request, res: Response) => {
+//   await fieldServices.getFieldByIdFromDB(req.params.fieldId, actorOf(req));
+//   const insights = await fieldServices.loadLongInsightsFromFieldData(req.body.data);
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: "Field long insights generated successfully",
+//     data: { insights },
+//   });
+// });
 
 export const fieldController = {
-  addField,
-  removeField,
+  createField,
+  getAllFields,
+  getMyFields,
+  getFieldById,
   updateField,
-  readAllFields,
-  readFieldById,
-  readMyFields,
-  getFieldInsights,
-  getFieldLongInsights,
+  softDeleteField,
 };

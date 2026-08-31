@@ -6,25 +6,23 @@ import { FieldValidation } from "./fields.validation";
 
 const router = express.Router();
 
-/**
- * "/myFields" is declared before "/:fieldId" so it is not captured as a field id.
- */
+// "/myFields" is declared before "/:fieldId" so it is not captured as a field id.
 
 // Admin only — listing every farm's fields.
-router.get("/", auth("admin"), fieldController.readAllFields);
+router.get("/", auth("admin"), fieldController.getAllFields);
 
 // Farmer only — their own fields.
-router.get("/myFields", auth("farmer"), fieldController.readMyFields);
+router.get("/myFields", auth("farmer"), fieldController.getMyFields);
 
 // Admin any field; farmer only their own (enforced in the service).
-router.get("/:fieldId", auth("admin", "farmer"), fieldController.readFieldById);
+router.get("/:fieldId", auth("admin", "farmer"), fieldController.getFieldById);
 
 // Admin must supply farmerId; a farmer is assigned as owner automatically.
 router.post(
   "/",
   auth("admin", "farmer"),
   validateRequest(FieldValidation.createFieldValidationSchema),
-  fieldController.addField
+  fieldController.createField
 );
 
 router.patch(
@@ -34,18 +32,20 @@ router.patch(
   fieldController.updateField
 );
 
-router.delete("/:fieldId", auth("admin", "farmer"), fieldController.removeField);
+router.delete("/:fieldId", auth("admin", "farmer"), fieldController.softDeleteField);
 
-// LLM-backed insights. Auth was previously commented out, leaving these open.
-router.post(
-  "/:fieldId/insights",
-  auth("admin", "farmer"),
-  fieldController.getFieldInsights
-);
-router.post(
-  "/:fieldId/longInsights",
-  auth("admin", "farmer"),
-  fieldController.getFieldLongInsights
-);
+/* ---------------------------------------------------------------------------
+ * DISABLED: AI insight endpoints.
+ * -------------------------------------------------------------------------*/
+// router.post(
+//   "/:fieldId/insights",
+//   auth("admin", "farmer"),
+//   fieldController.getFieldInsights
+// );
+// router.post(
+//   "/:fieldId/longInsights",
+//   auth("admin", "farmer"),
+//   fieldController.getFieldLongInsights
+// );
 
 export const FieldRoutes = router;
