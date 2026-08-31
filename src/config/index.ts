@@ -22,6 +22,21 @@ export default {
   gemini_api_key : process.env.GEMINI_API_KEY,
   groq_api_key : process.env.GROQ_API_KEY,
 
+  admin_email: process.env.ADMIN_EMAIL,
+  admin_password: process.env.ADMIN_PASSWORD,
+  admin_name: process.env.ADMIN_NAME || 'FarmFlow Admin',
+
+  smtp: {
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER,
+    password: process.env.SMTP_PASSWORD,
+    from: process.env.SMTP_FROM || 'FarmFlow <no-reply@farmflow.app>',
+  },
+
+  reset_code_ttl_minutes: parseInt(process.env.RESET_CODE_TTL_MINUTES || '10', 10),
+  jwt_reset_secret: process.env.JWT_RESET_SECRET || process.env.JWT_ACCESS_SECRET,
+
   aws: {
     aws_access_key_id: process.env.AWS_ACCESS_KEY_ID,
     aws_secret_access_key: process.env.AWS_SECRET_ACCESS_KEY,

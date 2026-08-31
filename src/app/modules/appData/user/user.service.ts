@@ -1,182 +1,120 @@
-import AppError from "../../../errors/AppError";
-import { IUser } from "./user.interface";
-import { UserModel } from "./user.model";
 import httpStatus from "http-status";
-import bcrypt from "bcrypt";
+
+import AppError from "../../../errors/AppError";
+import { IUser, TUserRole } from "./user.interface";
+import { UserModel } from "./user.model";
 import { generateUserCode } from "../../../utils/generateIds";
-import config from "../../../../config";
 
-// Create a new user in the database
 const createUserIntoDB = async (payload: IUser) => {
-  const role = payload.role ?? "farmer";
-  const userCode = await generateUserCode(role);
-  const insertingData = { ...payload, role, userCode };
-
-  const newUser = await UserModel.create(insertingData);
-  if (!newUser) {
-    throw new AppError(400, "Failed to create user!");
+  const existing = await UserModel.findOne({ email: payload.email });
+  if (existing) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "An account with that email already exists"
+    );
   }
+
+  const role: TUserRole = payload.role ?? "farmer";
+
+  const newUser = await UserModel.create({
+    ...payload,
+    role,
+    userCode: await generateUserCode(role),
+    // Experts start unverified; an admin promotes them after reviewing
+    // the designations they submitted.
+    ...(role === "expert" ? { expertStatus: "pending" as const } : {}),
+  });
+
   return newUser;
 };
 
-const getAllUsersFromDB = async () => {
+const getAllUsersFromDB = async (filters: { role?: string; status?: string }) => {
+  const query: Record<string, unknown> = { isDeleted: false };
+  if (filters.role) query.role = filters.role;
+  if (filters.status) query.status = filters.status;
 
-  const allUsers = await UserModel.find({role: 'farmer'});
-  if (!allUsers) {
-    throw new AppError(400, "Failed to fetch users!");
-  }
-  return allUsers;
+  return UserModel.find(query).sort({ createdAt: -1 });
 };
 
 const getUserByIdFromDB = async (userId: string) => {
-
-  const user = await UserModel.findById(userId);
+  const user = await UserModel.findOne({ _id: userId, isDeleted: false });
   if (!user) {
-    throw new AppError(400, "Failed to fetch user!");
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
   return user;
 };
 
-const getMeFromDB = async (userPhone: string) => {
-
-  const user = await UserModel.findOne({phone: userPhone});
+/** `getMe` resolves the caller from the token id — never from a URL parameter. */
+const getMeFromDB = async (userId: string) => {
+  const user = await UserModel.findOne({ _id: userId, isDeleted: false });
   if (!user) {
-    throw new AppError(400, "Failed to fetch user!");
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
   return user;
 };
 
-// Toggle user status between active and blocked
-const toggleUserStatus = async (userId: string) => {
-  const user = await UserModel.findById(userId);
+/**
+ * `updates` has already been narrowed to the caller's allowed fields by the
+ * controller, so this layer can apply it directly.
+ */
+const updateUserData = async (userId: string, updates: Partial<IUser>) => {
+  const user = await UserModel.findOne({ _id: userId, isDeleted: false });
   if (!user) {
-    throw new AppError(404, "User not found!");
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  const newStatus = user.status === "active" ? "blocked" : "active";
-  const updatedUser = await UserModel.findByIdAndUpdate(
-    userId,
-    { $set: { status: newStatus } },
-    { new: true }
-  );
-  if (!updatedUser) {
-    throw new AppError(500, "Failed to update user status!");
-  }
-
-  return updatedUser;
-};
-
-// Update user data
-const updateUserData = async (role:string,userId: string, userPhone: string, updates: Partial<IUser>) => {
-
-  // Find the target user by userId
-  const userData = await UserModel.findById(userId);
-  if (!userData) {
-    throw new AppError(404, "User not found!");
-  }
-
-  if(role !== "admin" && userData.phone !== userPhone){
-      throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Parameter ID and login access token do not match!");
-  }
-
-
-
-  // Prepare update object for $set
-  const updateFields: Partial<IUser> = {};
-  if (updates.fullName) updateFields.fullName = updates.fullName;
-  if (updates.email) updateFields.email = updates.email;
-  if (updates.address) updateFields.address = updates.address;
-  if (updates.photo) updateFields.photo = updates.photo;
-  if (updates.status) updateFields.status = updates.status;
-  if (updates.password && role == 'admin') updateFields.password = await bcrypt.hash(
-        updates.password,
-        Number(config.bcrypt_salt_rounds)
-      );;
-
-
-  const updatedUser = await UserModel.findByIdAndUpdate(
-    userId,
-    { $set: updateFields },
-    { new: true }
-  );
-  if (!updatedUser) {
-    throw new AppError(500, "Failed to update user data!");
-  }
-
-  return updatedUser;
-};
-
-// Update user password
-const updateUserPassword = async (
-  userId: string,
-  userPhone: string,
-  role: string,
-  oldPassword: string | undefined,
-  newPassword: string
-) => {
-  // Find the target user by userId
-  const userData = await UserModel.findById(userId).select("+password");
-  if (!userData) {
-    throw new AppError(404, "User not found!");
-  }
-
-  // Skip old password check and phone check if role is admin
-  if (role !== "admin") {
-    if (userData.phone !== userPhone) {
-      throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: Parameter ID and login access token do not match!");
-    }
-
-    if (!oldPassword) {
-      throw new AppError(400, "Old password is required!");
-    }
-    const isOldPasswordCorrect = await bcrypt.compare(oldPassword, userData.password);
-    if (!isOldPasswordCorrect) {
-      throw new AppError(401, "Old password is incorrect!");
+  if (updates.email && updates.email !== user.email) {
+    const taken = await UserModel.findOne({
+      email: updates.email,
+      _id: { $ne: userId },
+    });
+    if (taken) {
+      throw new AppError(httpStatus.CONFLICT, "That email is already in use");
     }
   }
 
-  // Hash the new password
-  const hashedPassword = await bcrypt.hash(newPassword, Number(config.bcrypt_salt_rounds));
-
-  // Update password and passwordChangedAt using $set
-  const updatedUser = await UserModel.findByIdAndUpdate(
-    userId,
-    { $set: { password: hashedPassword, passwordChangedAt: new Date() } },
-    { new: true, select: "-password" }
-  );
-  if (!updatedUser) {
-    throw new AppError(500, "Failed to update password!");
+  // A role change also changes the code prefix, which encodes the role.
+  if (updates.role && updates.role !== user.role) {
+    updates.userCode = await generateUserCode(updates.role);
+    if (updates.role === "expert" && !user.expertStatus) {
+      updates.expertStatus = "pending";
+    }
   }
 
-  return updatedUser;
+  const updated = await UserModel.findByIdAndUpdate(
+    userId,
+    { $set: updates },
+    { new: true, runValidators: true }
+  );
+
+  if (!updated) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to update user");
+  }
+  return updated;
 };
 
-
+/** Soft delete — the record is retained so posts and sessions keep resolving. */
 const softDeleteUserInDB = async (userId: string) => {
-  const user = await UserModel.findById(userId).where({ isDeleted: false });
+  const user = await UserModel.findOne({ _id: userId, isDeleted: false });
   if (!user) {
-    throw new AppError(404, "User not found!");
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+  if (user.role === "admin") {
+    throw new AppError(httpStatus.FORBIDDEN, "Admin accounts cannot be deleted");
   }
 
-  const updatedUser = await UserModel.findByIdAndUpdate(
+  return UserModel.findByIdAndUpdate(
     userId,
-    { $set: { isDeleted: true } },
+    { isDeleted: true, status: "blocked" },
     { new: true }
   );
-  if (!updatedUser) {
-    throw new AppError(500, "Failed to delete user!");
-  }
-
-  return updatedUser;
 };
 
 export const userServices = {
   createUserIntoDB,
-  toggleUserStatus,
-  updateUserData,
-  updateUserPassword,
-  softDeleteUserInDB,
   getAllUsersFromDB,
   getUserByIdFromDB,
-  getMeFromDB
+  getMeFromDB,
+  updateUserData,
+  softDeleteUserInDB,
 };

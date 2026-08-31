@@ -15,9 +15,9 @@ const createPost = catchAsync(async (req: Request, res: Response) => {
 
   const postData = req.body;
 
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
 
-  const newPost = await postServices.createPost(postData, userPhone);
+  const newPost = await postServices.createPost(postData, userId);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -31,10 +31,10 @@ const createPost = catchAsync(async (req: Request, res: Response) => {
 const updatePost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
   const postData = req.body;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
   const role = req.user.role;
 
-  const updatedPost = await postServices.updatePost(postId, postData, userPhone, role);
+  const updatedPost = await postServices.updatePost(postId, postData, userId, role);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -47,10 +47,10 @@ const updatePost = catchAsync(async (req: Request, res: Response) => {
 // Delete a post
 const deletePost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
   const role = req.user.role;
 
-  await postServices.deletePost(postId, userPhone, role);
+  await postServices.deletePost(postId, userId, role);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -64,10 +64,10 @@ const deletePost = catchAsync(async (req: Request, res: Response) => {
 const addComment = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
   const commentData = req.body;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
 
 
-  const updatedPost = await postServices.addComment(postId, userPhone, commentData);
+  const updatedPost = await postServices.addComment(postId, userId, commentData);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -80,9 +80,9 @@ const addComment = catchAsync(async (req: Request, res: Response) => {
 // Like a post
 const likePost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
 
-  const updatedPost = await postServices.likePost(postId, userPhone);
+  const updatedPost = await postServices.likePost(postId, userId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -95,9 +95,9 @@ const likePost = catchAsync(async (req: Request, res: Response) => {
 // Dislike a post
 const dislikePost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
 
-  const updatedPost = await postServices.dislikePost(postId, userPhone);
+  const updatedPost = await postServices.dislikePost(postId, userId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -110,9 +110,9 @@ const dislikePost = catchAsync(async (req: Request, res: Response) => {
 // Remove a like from a post
 const removeLikeFromPost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
 
-  const updatedPost = await postServices.removeLikeFromPost(postId, userPhone);
+  const updatedPost = await postServices.removeLikeFromPost(postId, userId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -125,9 +125,9 @@ const removeLikeFromPost = catchAsync(async (req: Request, res: Response) => {
 // Remove a dislike from a post
 const removeDislikeFromPost = catchAsync(async (req: Request, res: Response) => {
   const { postId } = req.params;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
 
-  const updatedPost = await postServices.removeDislikeFromPost(postId, userPhone);
+  const updatedPost = await postServices.removeDislikeFromPost(postId, userId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

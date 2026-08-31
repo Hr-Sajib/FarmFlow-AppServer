@@ -1,134 +1,117 @@
 import { Request, Response } from "express";
-import catchAsync from "../../../utils/catchAsync";
-import { IUser } from "./user.interface";
 import httpStatus from "http-status";
+
+import catchAsync from "../../../utils/catchAsync";
 import sendResponse from "../../../utils/sendResponse";
-import { userServices } from "./user.service";
-import { UserValidation } from "./user.validation";
 import AppError from "../../../errors/AppError";
+import { userServices } from "./user.service";
+import { UPDATABLE_FIELDS } from "./user.validation";
+import { IUser, TUserRole } from "./user.interface";
 
-// Create a new user
 const createUser = catchAsync(async (req: Request, res: Response) => {
-  const userData = req.body;
-
-  const newUser = await userServices.createUserIntoDB(userData);
-
+  const user = await userServices.createUserIntoDB(req.body);
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: "Users fetched successfully",
-    data: newUser,
+    message: "Registration successful",
+    data: user,
   });
 });
 
 const getAllUsers = catchAsync(async (req: Request, res: Response) => {
-  const Users = await userServices.getAllUsersFromDB();
-
+  const { role, status } = req.query as { role?: string; status?: string };
+  const users = await userServices.getAllUsersFromDB({ role, status });
   sendResponse(res, {
-    statusCode: httpStatus.CREATED,
+    statusCode: httpStatus.OK,
     success: true,
-    message: "All Users fetched successfully",
-    data: Users,
+    message: "Users retrieved successfully",
+    data: users,
   });
 });
 
 const getUserById = catchAsync(async (req: Request, res: Response) => {
-  const userId = req.params.userId;
-  const user = await userServices.getUserByIdFromDB(userId);
-
+  const user = await userServices.getUserByIdFromDB(req.params.userId);
   sendResponse(res, {
-    statusCode: httpStatus.CREATED,
+    statusCode: httpStatus.OK,
     success: true,
-    message: "User fetched successfully",
+    message: "User retrieved successfully",
     data: user,
   });
 });
 
+/** Identity comes from the verified token, so there is nothing to spoof. */
 const getMe = catchAsync(async (req: Request, res: Response) => {
-
-  const user = await userServices.getMeFromDB(req.user?.userPhone);
-
+  const user = await userServices.getMeFromDB(req.user.userId);
   sendResponse(res, {
-    statusCode: httpStatus.CREATED,
+    statusCode: httpStatus.OK,
     success: true,
-    message: "User fetched successfully",
+    message: "Profile retrieved successfully",
     data: user,
   });
 });
 
-// Toggle user status between active and blocked
-const toggleUserStatus = catchAsync(async (req: Request, res: Response) => {
-  const { userId } = req.params;
-
-  const updatedUser = await userServices.toggleUserStatus(userId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: `User status updated to ${updatedUser.status}`,
-    data: updatedUser,
-  });
-});
-
-// Update user data
+/**
+ * Ownership and field narrowing both happen here:
+ *  - an admin may update anyone; a farmer or expert only themselves
+ *  - the body is filtered to the fields that role is allowed to set, so
+ *    `role`, `status` and `expertStatus` are dropped for non-admins rather
+ *    than trusted from the request
+ */
 const updateUser = catchAsync(async (req: Request, res: Response) => {
-  console.log("ctrl touch")
   const { userId } = req.params;
-  const updates = req.body;
-  const userPhone = req.user.userPhone; // Set by auth middleware
-  const role = req.user.role; // Set by auth middleware
+  const callerRole = req.user.role as TUserRole;
+  const callerId = req.user.userId;
 
-  const updatedUser = await userServices.updateUserData(role, userId, userPhone, updates);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "User data updated successfully",
-    data: updatedUser,
-  });
-});
-
-// Update user password
-const updatePassword = catchAsync(async (req: Request, res: Response) => {
-  const { userId } = req.params;
-  const { oldPassword, newPassword } = req.body;
-  const userPhone = req.user.userPhone; // Set by auth middleware
-  const role = req.user.role; // Set by auth middleware
-
-  if (!newPassword) {
-    throw new AppError(400, "New password is required");
+  if (callerRole !== "admin" && userId !== callerId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You can only update your own profile"
+    );
   }
 
-  const updatedUser = await userServices.updateUserPassword(userId, userPhone, role, oldPassword, newPassword);
+  const allowed = UPDATABLE_FIELDS[callerRole] ?? UPDATABLE_FIELDS.farmer;
+  const updates: Partial<IUser> = {};
 
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) {
+      (updates as Record<string, unknown>)[key] = req.body[key];
+    }
+  }
+
+  const rejected = Object.keys(req.body).filter(
+    (key) => !(allowed as readonly string[]).includes(key)
+  );
+  if (rejected.length) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not allowed to update: ${rejected.join(", ")}`
+    );
+  }
+
+  const user = await userServices.updateUserData(userId, updates);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Password updated successfully",
-    data: updatedUser,
+    message: "User updated successfully",
+    data: user,
   });
 });
 
 const softDeleteUser = catchAsync(async (req: Request, res: Response) => {
-  const { userId } = req.params;
-
-  const deletedUser = await userServices.softDeleteUserInDB(userId);
-
+  const user = await userServices.softDeleteUserInDB(req.params.userId);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "User deleted successfully",
-    data: deletedUser,
+    data: user,
   });
 });
 
 export const userController = {
   createUser,
-  toggleUserStatus,
-  updateUser,
-  updatePassword,
-  softDeleteUser,
   getAllUsers,
   getUserById,
-  getMe
+  getMe,
+  updateUser,
+  softDeleteUser,
 };

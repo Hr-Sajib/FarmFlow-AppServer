@@ -1,141 +1,90 @@
 import { z } from "zod";
 
-const phoneSchema = z
-  .string({
-    invalid_type_error: "Phone number must be a string",
-    required_error: "Phone number is required",
-  })
+const emailField = z
+  .string({ required_error: "Email is required" })
+  .email({ message: "Invalid email format" })
   .trim()
-  .length(11, { message: "Phone number must be exactly 11 digits" })
+  .toLowerCase();
+
+const phoneField = z
+  .string()
+  .trim()
   .regex(/^01[0-9]{9}$/, {
-    message: 'Phone number must start with "01" and be 11 digits',
+    message: 'Phone must start with "01" and be 11 digits',
   });
 
-// Min 6 keeps the previous floor. The old max of 10 was raised: capping
-// passwords low blocks password managers and long passphrases for no benefit.
-const passwordSchema = z
-  .string({
-    invalid_type_error: "Password must be a string",
-    required_error: "Password is required",
-  })
+const passwordField = z
+  .string({ required_error: "Password is required" })
   .min(6, { message: "Password must be at least 6 characters" })
   .max(128, { message: "Password cannot exceed 128 characters" });
 
 const designationSchema = z
   .object({
-    designationTitle: z
-      .string({ required_error: "Designation title is required" })
-      .trim()
-      .min(1, { message: "Designation title cannot be empty" }),
-    designatedFrom: z
-      .string({ required_error: "Designating institution is required" })
-      .trim()
-      .min(1, { message: "Designating institution cannot be empty" }),
-    documents: z
-      .array(z.string().url({ message: "Each document must be a valid URL" }))
-      .default([]),
+    designationTitle: z.string().trim().min(1, "Designation title cannot be empty"),
+    designatedFrom: z.string().trim().min(1, "Designating institution cannot be empty"),
+    documents: z.array(z.string().url({ message: "Each document must be a valid URL" })).default([]),
+    isApproved: z.boolean().optional(), // admin-only; stripped for non-admins
   })
   .strict();
 
 /**
- * Registration payload. `userCode`, `role`, `status` and `expertStatus` are
- * deliberately NOT accepted from the client — they are assigned server-side.
- * `.strict()` rejects them outright rather than silently dropping them,
- * which is what closes the mass-assignment hole.
+ * Public registration. Role is limited to farmer or expert — `admin` is not
+ * selectable, and `status`, `userCode` and `expertStatus` are assigned by the
+ * server. `.strict()` rejects any of them outright instead of silently
+ * dropping them, which is what closes the privilege-escalation path.
  */
 const createUserValidationSchema = z.object({
   body: z
     .object({
-      fullName: z
-        .string({
-          invalid_type_error: "Full name must be a string",
-          required_error: "Full name is required",
-        })
-        .trim()
-        .min(1, { message: "Full name cannot be empty" }),
-      phone: phoneSchema,
-      email: z
-        .string({ invalid_type_error: "Email must be a string" })
-        .email({ message: "Invalid email format" })
-        .trim()
-        .toLowerCase()
-        .optional(),
-      password: passwordSchema,
-      address: z
-        .string({
-          invalid_type_error: "Address must be a string",
-          required_error: "Address is required",
-        })
-        .trim()
-        .min(1, { message: "Address cannot be empty" }),
-      photo: z
-        .string()
-        .url({ message: "Photo must be a valid URL" })
-        .trim()
-        .optional(),
+      fullName: z.string({ required_error: "Full name is required" }).trim().min(1),
+      email: emailField,
+      password: passwordField,
+      address: z.string({ required_error: "Address is required" }).trim().min(1),
+      phone: phoneField.optional(),
+      photo: z.string().url({ message: "Photo must be a valid URL" }).trim().optional(),
+      role: z.enum(["farmer", "expert"], {
+        errorMap: () => ({ message: "Role must be either 'farmer' or 'expert'" }),
+      }).default("farmer"),
       designations: z.array(designationSchema).optional(),
     })
     .strict(),
 });
 
 /**
- * Self-service profile update. Role, status, userCode and expertStatus are
- * excluded — privilege changes belong on dedicated admin routes so they can
- * carry their own authorization.
+ * Field allowlists per role. The route accepts the widest schema and the
+ * controller narrows it to the caller's role, so a farmer cannot promote
+ * themselves by adding `role` to the body.
  */
+export const UPDATABLE_FIELDS = {
+  admin: [
+    "fullName", "email", "phone", "address", "photo",
+    "role", "status", "expertStatus", "designations",
+  ],
+  farmer: ["fullName", "email", "phone", "address", "photo"],
+  expert: ["fullName", "email", "phone", "address", "photo", "designations"],
+} as const;
+
 const updateUserValidationSchema = z.object({
   body: z
     .object({
       fullName: z.string().trim().min(1).optional(),
-      email: z
-        .string()
-        .email({ message: "Invalid email format" })
-        .trim()
-        .toLowerCase()
-        .optional(),
+      email: emailField.optional(),
+      phone: phoneField.optional(),
       address: z.string().trim().min(1).optional(),
       photo: z.string().url({ message: "Photo must be a valid URL" }).trim().optional(),
-      phone: phoneSchema.optional(),
+      // Admin-only in practice — the controller strips these for other roles.
+      role: z.enum(["admin", "farmer", "expert"]).optional(),
+      status: z.enum(["active", "blocked"]).optional(),
+      expertStatus: z.enum(["pending", "verified", "rejected"]).optional(),
+      designations: z.array(designationSchema).optional(),
     })
-    .strict(),
-});
-
-const changePasswordValidationSchema = z.object({
-  body: z
-    .object({
-      oldPassword: z.string({ required_error: "Old password is required" }),
-      newPassword: passwordSchema,
-    })
-    .strict(),
-});
-
-/** Admin-only: block or unblock a user. */
-const changeUserStatusValidationSchema = z.object({
-  body: z
-    .object({
-      status: z.enum(["active", "blocked"], {
-        errorMap: () => ({ message: "Status must be either 'active' or 'blocked'" }),
-      }),
-    })
-    .strict(),
-});
-
-/** Admin-only: approve or reject one claimed designation. */
-const reviewDesignationValidationSchema = z.object({
-  body: z
-    .object({
-      designationId: z
-        .string({ required_error: "Designation id is required" })
-        .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid designation id" }),
-      isApproved: z.boolean({ required_error: "isApproved is required" }),
-    })
-    .strict(),
+    .strict()
+    .refine((body) => Object.keys(body).length > 0, {
+      message: "At least one field must be provided",
+    }),
 });
 
 export const UserValidation = {
   createUserValidationSchema,
   updateUserValidationSchema,
-  changePasswordValidationSchema,
-  changeUserStatusValidationSchema,
-  reviewDesignationValidationSchema,
 };

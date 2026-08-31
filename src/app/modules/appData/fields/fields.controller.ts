@@ -10,9 +10,9 @@ import { fieldServices } from "./fields.service";
 const addField = catchAsync(async (req: Request, res: Response) => {
   // Validate request body using Zod schema
   const fieldData = req.body;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
 
-  const newField = await fieldServices.addField(fieldData, userPhone, req?.user?.role);
+  const newField = await fieldServices.addField(fieldData, userId, req?.user?.role);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -25,10 +25,10 @@ const addField = catchAsync(async (req: Request, res: Response) => {
 // Soft delete a field
 const removeField = catchAsync(async (req: Request, res: Response) => {
   const { fieldId } = req.params;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
   const role = req.user.role;
 
-  const deletedField = await fieldServices.removeField(fieldId, userPhone, role);
+  const deletedField = await fieldServices.removeField(fieldId, userId, role);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -42,10 +42,10 @@ const removeField = catchAsync(async (req: Request, res: Response) => {
 const updateField = catchAsync(async (req: Request, res: Response) => {
   const { fieldId } = req.params;
   const fieldData = req.body;
-  const userPhone = req.user.userPhone;
+  const userId = req.user.userId;
   const role = req.user.role;
 
-  const updatedField = await fieldServices.updateField(fieldId, fieldData, userPhone, role);
+  const updatedField = await fieldServices.updateField(fieldId, fieldData, userId, role);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -69,7 +69,7 @@ const readAllFields = catchAsync(async (req: Request, res: Response) => {
 
 // Read all fields
 const readMyFields = catchAsync(async (req: Request, res: Response) => {
-  const fields = await fieldServices.readMyFieldsFromDB(req.user?.userPhone);
+  const fields = await fieldServices.readMyFieldsFromDB(req.user?.userId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

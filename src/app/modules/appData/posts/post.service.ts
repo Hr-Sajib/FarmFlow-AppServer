@@ -4,9 +4,9 @@ import { IPost, TComment } from "./post.interface";
 import { PostModel } from "./post.model";
 import { UserModel } from "../user/user.model";
 
-const createPost = async (postData: IPost, userPhone: string) => {
+const createPost = async (postData: IPost, userId: string) => {
   
-  const user = await UserModel.findOne({ phone: userPhone });
+  const user = await UserModel.findOne({ _id: userId });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
@@ -28,7 +28,7 @@ const createPost = async (postData: IPost, userPhone: string) => {
 const updatePost = async (
   postId: string,
   postData: Partial<IPost>,
-  userPhone: string,
+  userId: string,
   role: string
 ) => {
   const post = await PostModel.findById(postId);
@@ -36,7 +36,7 @@ const updatePost = async (
     throw new AppError(httpStatus.NOT_FOUND, "Post not found");
   }
 
-  const user = await UserModel.findOne({ phone: userPhone });
+  const user = await UserModel.findOne({ _id: userId });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
@@ -56,13 +56,13 @@ const updatePost = async (
   return updatedPost;
 };
 
-const deletePost = async (postId: string, userPhone: string, role: string) => {
+const deletePost = async (postId: string, userId: string, role: string) => {
   const post = await PostModel.findById(postId);
   if (!post) {
     throw new AppError(httpStatus.NOT_FOUND, "Post not found");
   }
 
-  const user = await UserModel.findOne({ phone: userPhone });
+  const user = await UserModel.findOne({ _id: userId });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
@@ -74,7 +74,7 @@ const deletePost = async (postId: string, userPhone: string, role: string) => {
   await PostModel.findByIdAndDelete(postId);
 };
 
-const addComment = async (postId: string,userPhone: string, commentData:TComment) => {
+const addComment = async (postId: string,userId: string, commentData:TComment) => {
 
   const post = await PostModel.findById(postId);
   if (!post) {
@@ -82,7 +82,7 @@ const addComment = async (postId: string,userPhone: string, commentData:TComment
   }
 
   // Find the user by commenterId and ensure not deleted
-  const user = await UserModel.findOne({phone: userPhone});
+  const user = await UserModel.findOne({ _id: userId });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
@@ -108,9 +108,9 @@ const addComment = async (postId: string,userPhone: string, commentData:TComment
 };
 
 
-const likePost = async (postId: string, userPhone: string) => {
+const likePost = async (postId: string, userId: string) => {
 
-  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
@@ -146,13 +146,13 @@ const likePost = async (postId: string, userPhone: string) => {
   return updatedPost;
 };
 
-const dislikePost = async (postId: string, userPhone: string) => {
+const dislikePost = async (postId: string, userId: string) => {
   const post = await PostModel.findById(postId);
   if (!post) {
     throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
   }
   
-  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
@@ -182,8 +182,8 @@ const dislikePost = async (postId: string, userPhone: string) => {
   return updatedPost;
 };
 
-const removeLikeFromPost = async (postId: string, userPhone: string) => {
-  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+const removeLikeFromPost = async (postId: string, userId: string) => {
+  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
@@ -213,8 +213,8 @@ const removeLikeFromPost = async (postId: string, userPhone: string) => {
   return updatedPost;
 };
 
-const removeDislikeFromPost = async (postId: string, userPhone: string) => {
-  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+const removeDislikeFromPost = async (postId: string, userId: string) => {
+  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }

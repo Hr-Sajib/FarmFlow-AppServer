@@ -13,6 +13,16 @@ declare namespace NodeJS {
     INFLUXDB_TOKEN: string;
     INFLUXDB_ORG: string;
     INFLUXDB_BUCKET: string;
+    ADMIN_EMAIL?: string;
+    ADMIN_PASSWORD?: string;
+    ADMIN_NAME?: string;
+    SMTP_HOST?: string;
+    SMTP_PORT?: string;
+    SMTP_USER?: string;
+    SMTP_PASSWORD?: string;
+    SMTP_FROM?: string;
+    RESET_CODE_TTL_MINUTES?: string;
+    JWT_RESET_SECRET?: string;
     AWS_ACCESS_KEY_ID: string;
     AWS_SECRET_ACCESS_KEY: string;
     AWS_REGION: string;

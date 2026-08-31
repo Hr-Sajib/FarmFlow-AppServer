@@ -20,8 +20,10 @@ export interface IDesignation {
 
 export interface IUser {
   fullName: string;
-  phone: string;
-  email?: string;
+  /** Login identifier. Unique, lowercased. */
+  email: string;
+  /** Contact only — no longer used for authentication. */
+  phone?: string;
   password: string;
   address: string;
   photo?: string;

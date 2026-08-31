@@ -19,8 +19,8 @@ const model = genAI.getGenerativeModel({
   model: "gemini-2.5-flash", // Fixed: This works in 2025
 });
 
-const addField = async (fieldData: IField, userPhone: string, role: string) => {
-  const user = await UserModel.findOne({ phone: userPhone, isDeleted: false });
+const addField = async (fieldData: IField, userId: string, role: string) => {
+  const user = await UserModel.findOne({ _id: userId, isDeleted: false });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
@@ -65,8 +65,8 @@ const addField = async (fieldData: IField, userPhone: string, role: string) => {
   }
 };
 
-const removeField = async (fieldId: string, userPhone: string, role: string) => {
-  const user = await UserModel.findOne({ phone: userPhone, isDeleted: false });
+const removeField = async (fieldId: string, userId: string, role: string) => {
+  const user = await UserModel.findOne({ _id: userId, isDeleted: false });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
@@ -114,8 +114,8 @@ const removeField = async (fieldId: string, userPhone: string, role: string) => 
   }
 };
 
-const updateField = async (fieldId: string, fieldData: Partial<IField>, userPhone: string, role: string) => {
-  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+const updateField = async (fieldId: string, fieldData: Partial<IField>, userId: string, role: string) => {
+  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
@@ -170,8 +170,8 @@ const readAllFields = async () => {
   return fields;
 };
 
-const readMyFieldsFromDB = async (userPhone: string) => {
-  const user = await UserModel.findOne({ phone: userPhone }).where({ isDeleted: false });
+const readMyFieldsFromDB = async (userId: string) => {
+  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
@@ -202,7 +202,7 @@ export type TFieldInfo = {
     soilMoisture?: string;
     lightIntensity?: string;
   };
-  userPhone?: string;
+  userId?: string;
   role?: "admin" | "farmer";
 };
 

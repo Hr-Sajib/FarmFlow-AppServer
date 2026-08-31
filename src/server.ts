@@ -8,6 +8,7 @@ import app from "./app";
 import config from "./config";
 import { setupChatSocket } from "./app/modules/chat/chat.socket";
 import { initializeMqttClient } from "./app/modules/sensorData/mqtt.service";
+import { seedAdmin } from "./app/utils/seedAdmin";
 
 // Initialize InfluxDB client
 export const influxClient = new InfluxDB({
@@ -18,7 +19,7 @@ export const influxClient = new InfluxDB({
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: "http://localhost:3000", // Restrict to Next.js frontend
+    origin: "http://localhost:3002", // Restrict to Next.js frontend
     methods: ["GET", "POST"],
   },
 });
@@ -32,6 +33,8 @@ async function main() {
     if (conn) {
       console.log("\nMongoDB Database connected..");
     }
+
+    await seedAdmin();
 
     const orgsApi = new OrgsAPI(influxClient);
     await orgsApi.getOrgs({ org: config.influxDB_org as string });
