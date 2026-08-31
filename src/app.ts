@@ -9,6 +9,7 @@ import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 import { PostRoutes } from "./app/modules/appData/posts/post.route";
 import { FieldRoutes } from "./app/modules/appData/fields/fields.route";
 import { ChatRoutes } from "./app/modules/chat/chat.route";
+import { UploadRoutes } from "./app/modules/upload/upload.route";
 
 const app: Application = express();
 
@@ -38,6 +39,7 @@ app.use("/sensorData", sensorRoutes);
 app.use("/post", PostRoutes);
 app.use("/field", FieldRoutes);
 app.use("/chat", ChatRoutes);
+app.use("/upload", UploadRoutes);
 
 /**
  * =========================

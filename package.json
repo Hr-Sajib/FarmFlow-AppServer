@@ -9,7 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "prettier:fix": "npx prettier --write src",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "PORT=5002 ts-node-dev --respawn --transpile-only src/server.ts",
     "start:prod": "node ./dist/server.js",
     "build": "tsc"
   },
@@ -23,6 +23,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.15.2",
     "dotenv": "^16.6.1",
     "eslint": "^9.25.1",
@@ -36,6 +37,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1121.0",
     "@google-ai/generativelanguage": "^3.2.0",
     "@google/generative-ai": "^0.24.1",
     "@influxdata/influxdb-client": "^1.35.0",
@@ -44,12 +46,15 @@
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "express-rate-limit": "^8.7.0",
     "groq-sdk": "^0.30.0",
     "http-status": "^2.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.1",
     "mqtt": "^5.12.0",
+    "multer": "^2.3.0",
     "puppeteer": "^24.11.2",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.1",
     "xlsx": "^0.18.5",
     "zod": "^3.24.3"

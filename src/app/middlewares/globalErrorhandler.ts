@@ -2,6 +2,7 @@
 /* eslint-disable no-unused-vars */
 import { ErrorRequestHandler, Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+import { MulterError } from 'multer';
 import config from '../../config';
 import AppError from '../errors/AppError';
 import handleCastError from '../errors/handleCastError';
@@ -48,6 +49,19 @@ const globalErrorHandler: ErrorRequestHandler = (
     statusCode = simplifiedError?.statusCode;
     message = simplifiedError?.message;
     errorSources = simplifiedError?.errorSources;
+  } else if (err instanceof MulterError) {
+    // Multer rejects oversized/too-many files with its own error class, which
+    // would otherwise fall through to a generic 500.
+    statusCode = 400;
+    message =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'File is too large'
+        : err.code === 'LIMIT_FILE_COUNT'
+        ? 'Too many files in one request'
+        : err.code === 'LIMIT_UNEXPECTED_FILE'
+        ? `Unexpected file field "${err.field}"`
+        : err.message;
+    errorSources = [{ path: err.field ?? '', message }];
   } else if (err instanceof AppError) {
     statusCode = err?.statusCode;
     message = err.message;
@@ -72,8 +86,7 @@ const globalErrorHandler: ErrorRequestHandler = (
     success: false,
     message,
     errorSources,
-    err,
-    stack: config.NODE_ENV === 'development' ? err?.stack : null,
+    ...(config.NODE_ENV === 'development' ? { err, stack: err?.stack } : {}),
   });
 };
 

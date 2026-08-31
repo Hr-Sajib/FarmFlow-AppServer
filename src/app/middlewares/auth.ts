@@ -53,7 +53,12 @@ const auth = (...requiredRoles: string[]) => {
       throw new AppError(httpStatus.UNAUTHORIZED, "You are not permitted to do that");
     }
 
-    req.user = decoded as JwtPayload & { role: string };
+    // userCode is attached here because the middleware already loaded the user;
+    // downstream handlers would otherwise repeat the lookup.
+    req.user = {
+      ...decoded,
+      userCode: user.userCode,
+    } as JwtPayload & { role: string; userCode: string };
     next();
   });
 };
