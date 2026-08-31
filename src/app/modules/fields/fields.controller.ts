@@ -97,31 +97,20 @@ const getFieldWeather = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/* ---------------------------------------------------------------------------
- * DISABLED: AI insight handlers. Re-enable alongside fieldServices'
- * loadInsightsFromFieldData / loadLongInsightsFromFieldData and their routes.
- * -------------------------------------------------------------------------*/
-// const getFieldInsights = catchAsync(async (req: Request, res: Response) => {
-//   await fieldServices.getFieldByIdFromDB(req.params.fieldId, actorOf(req));
-//   const insights = await fieldServices.loadInsightsFromFieldData(req.body.data);
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: "Field insights generated successfully",
-//     data: { insights },
-//   });
-// });
-
-// const getFieldLongInsights = catchAsync(async (req: Request, res: Response) => {
-//   await fieldServices.getFieldByIdFromDB(req.params.fieldId, actorOf(req));
-//   const insights = await fieldServices.loadLongInsightsFromFieldData(req.body.data);
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: "Field long insights generated successfully",
-//     data: { insights },
-//   });
-// });
+const getFieldInsight = catchAsync(async (req: Request, res: Response) => {
+  const detail = req.query.detail === "full" ? "full" : "brief";
+  const insight = await fieldServices.getFieldInsight(
+    req.params.fieldId,
+    actorOf(req),
+    detail
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Field insight generated successfully",
+    data: insight,
+  });
+});
 
 export const fieldController = {
   createField,
@@ -131,4 +120,5 @@ export const fieldController = {
   updateField,
   softDeleteField,
   getFieldWeather,
+  getFieldInsight,
 };

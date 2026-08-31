@@ -11,8 +11,12 @@ import {
   isAdmin,
   assertFarmerExists,
   getOwnedField,
+  getSoilProfile,
+  getLatestReadingForField,
+  buildFieldInsightPrompt,
 } from "./fields.utils";
 import { fetchWeatherForCoordinates } from "../../utils/openMeteo";
+import { createChatCompletion } from "../../utils/openRouter";
 
 /**
  * An admin must name the owning farmer; a farmer always becomes the owner of
@@ -129,153 +133,47 @@ const getFieldWeather = async (fieldId: string, actor: TActor) => {
   };
 };
 
-/* ---------------------------------------------------------------------------
- * DISABLED: AI insight generation (SoilGrids + Gemini).
- * Kept for reference until the advisory layer moves to OpenRouter.
- * Re-enabling also requires uncommenting the controller handlers, the two
- * routes, and restoring the axios / GoogleGenerativeAI imports above.
- * -------------------------------------------------------------------------*/
-// 
-// // FIXED: Only changes here — model name + removed invalid debug code
-// const loadInsightsFromFieldData = async (fieldInfo: TFieldInfo) => {
-//   let soilData = {
-//     clay: 0,
-//     silt: 0,
-//     sand: 0,
-//     phh2o: 0,
-//     soc: 0,
-//   };
-//   try {
-//     const response = await axios.get(
-//       `https://rest.isric.org/soilgrids/v2.0/properties/query?lat=${fieldInfo.latitude}&lon=${fieldInfo.longitude}&property=clay&property=silt&property=sand&property=phh2o&property=soc&depth=0-5cm&value=mean`,
-//       { headers: { accept: "application/json" } }
-//     );
-//     const layers = response.data.properties.layers;
-//     soilData = {
-//       clay: layers.find((l: any) => l.name === "clay")?.depths[0].values.mean / 10 || 0,
-//       silt: layers.find((l: any) => l.name === "silt")?.depths[0].values.mean / 10 || 0,
-//       sand: layers.find((l: any) => l.name === "sand")?.depths[0].values.mean / 10 || 0,
-//       phh2o: layers.find((l: any) => l.name === "phh2o")?.depths[0].values.mean / 10 || 0,
-//       soc: layers.find((l: any) => l.name === "soc")?.depths[0].values.mean / 10 || 0,
-//     };
-//     console.log("fieldServices.loadInsightsFromFieldData - SoilGrids response:", soilData);
-//   } catch (err) {
-//     console.error("fieldServices.loadInsightsFromFieldData - SoilGrids API error:", err);
-//   }
-// 
-//   const prompt = `
-//       You are an agricultural AI assistant. Based on the following field and soil data, provide actionable insights to help a farmer optimize their field conditions:
-// 
-//       - Crop: ${fieldInfo?.fieldCrop || "Unknown"}
-//       - Soil Type: ${fieldInfo?.soilType || "Unknown"}
-//       - Field Size: ${fieldInfo?.fieldSizeInAcres || "Unknown"} acres
-//       - Temperature: ${fieldInfo?.sensorData?.temperature || 0}°C
-//       - Humidity: ${fieldInfo?.sensorData?.humidity || 0}%
-//       - Soil Moisture: ${fieldInfo?.sensorData?.soilMoisture || 0}%
-//       - Light Intensity: ${fieldInfo?.sensorData?.lightIntensity || 0} lux
-//       - Soil Clay Content: ${soilData.clay.toFixed(1)}%
-//       - Soil Silt Content: ${soilData.silt.toFixed(1)}%
-//       - Soil Sand Content: ${soilData.sand.toFixed(1)}%
-//       - Soil pH: ${soilData.phh2o.toFixed(1)}
-//       - Soil Organic Carbon: ${soilData.soc.toFixed(1)} g/kg
-// 
-//       Provide specific recommendations for environmental controls based on the data given with most focus on temperature,
-//       humidity, soil moisture, light intensity. Also add some insight based on the other values and if any of those are in critical situation.
-//       Give tailored advice. Keep insights concise, practical, use best utilization of word limit given.
-//       Try to give information and precise direction rather than descriptions. Keep the response in 70 words in bangla.
-//     `;
-// 
-//   try {
-//     const result = await model.generateContent({
-//       contents: [{ role: "user", parts: [{ text: prompt }] }],
-//       generationConfig: {
-//         temperature: 0.7,
-//         maxOutputTokens: 2000,
-//       },
-//     });
-// 
-//     const responseText = result.response.text();
-//     if (!responseText) {
-//       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to generate insights from Gemini API!");
-//     }
-// 
-//     console.log('fieldServices.loadInsightsFromFieldData - Gemini response:', responseText);
-//     return responseText;
-//   } catch (error: any) {
-//     console.error('Gemini API Error:', error.message || error);
-//     return `Based on current data, maintain soil moisture above 50% for optimal growth. Temperature is suitable for ${fieldInfo?.fieldCrop || 'the crop'}. Check pH (${soilData.phh2o.toFixed(1)}) – aim for 6.0-7.0.`;
-//   }
-// };
-// 
-// const loadLongInsightsFromFieldData = async (fieldInfo: TFieldInfo) => {
-//   let soilData = {
-//     clay: 0,
-//     silt: 0,
-//     sand: 0,
-//     phh2o: 0,
-//     soc: 0,
-//   };
-//   try {
-//     const response = await axios.get(
-//       `https://rest.isric.org/soilgrids/v2.0/properties/query?lat=${fieldInfo.latitude}&lon=${fieldInfo.longitude}&property=clay&property=silt&property=sand&property=phh2o&property=soc&depth=0-5cm&value=mean`,
-//       { headers: { accept: "application/json" } }
-//     );
-//     const layers = response.data.properties.layers;
-//     soilData = {
-//       clay: layers.find((l: any) => l.name === "clay")?.depths[0].values.mean / 10 || 0,
-//       silt: layers.find((l: any) => l.name === "silt")?.depths[0].values.mean / 10 || 0,
-//       sand: layers.find((l: any) => l.name === "sand")?.depths[0].values.mean / 10 || 0,
-//       phh2o: layers.find((l: any) => l.name === "phh2o")?.depths[0].values.mean / 10 || 0,
-//       soc: layers.find((l: any) => l.name === "soc")?.depths[0].values.mean / 10 || 0,
-//     };
-//     console.log("fieldServices.loadInsightsFromFieldData - SoilGrids response:", soilData);
-//   } catch (err) {
-//     console.error("fieldServices.loadInsightsFromFieldData - SoilGrids API error:", err);
-//   }
-// 
-//   const prompt = `
-//       You are an agricultural AI assistant. Based on the following field and soil data, provide actionable insights to help a farmer optimize their field conditions:
-// 
-//       - Crop: ${fieldInfo?.fieldCrop || "Unknown"}
-//       - Soil Type: ${fieldInfo?.soilType || "Unknown"}
-//       - Field Size: ${fieldInfo?.fieldSizeInAcres || "Unknown"} acres
-//       - Temperature: ${fieldInfo?.sensorData?.temperature || 0}°C
-//       - Humidity: ${fieldInfo?.sensorData?.humidity || 0}%
-//       - Soil Moisture: ${fieldInfo?.sensorData?.soilMoisture || 0}%
-//       - Light Intensity: ${fieldInfo?.sensorData?.lightIntensity || 0} lux
-//       - Soil Clay Content: ${soilData.clay.toFixed(1)}%
-//       - Soil Silt Content: ${soilData.silt.toFixed(1)}%
-//       - Soil Sand Content: ${soilData.sand.toFixed(1)}%
-//       - Soil pH: ${soilData.phh2o.toFixed(1)}
-//       - Soil Organic Carbon: ${soilData.soc.toFixed(1)} g/kg
-// 
-//       Provide specific recommendations for environmental controlls based on the data given with most focus on temperature,
-//       humidity, soil moisture, light intensity. Also add some insight based on the other values and if any of those are in critical situation.
-//       Give tailored advice. Keep insights concise, practical, use best utilization of word limit given.
-//       Try to give information and precise direction rather then descriptions. Keep the response with around 500 bangla.
-//     `;
-// 
-//   try {
-//     const result = await model.generateContent({
-//       contents: [{ role: "user", parts: [{ text: prompt }] }],
-//       generationConfig: {
-//         temperature: 0.7,
-//         maxOutputTokens: 3000,
-//       },
-//     });
-// 
-//     const responseText = result.response.text();
-//     if (!responseText) {
-//       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to generate long insights!");
-//     }
-//     return responseText;
-//   } catch (error: any) {
-//     console.error('Long insights error:', error.message || error);
-//     return "দীর্ঘ বিশ্লেষণ তৈরি করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।";
-//   }
-// };
-// 
-// // EXACT SAME EXPORTS — UNCHANGED
+/**
+ * Field advisory: what to do about this field, right now.
+ *
+ * Combines the crop and environment on record, the most recent sensor reading,
+ * and the SoilGrids profile for the field's coordinates. Written to be read in
+ * a card, so the short form is deliberately tight.
+ */
+const getFieldInsight = async (
+  fieldId: string,
+  actor: TActor,
+  detail: "brief" | "full" = "brief"
+) => {
+  const field = await getOwnedField(fieldId, actor);
+
+  const [latest, soil] = await Promise.all([
+    getLatestReadingForField(field.fieldId),
+    getSoilProfile(
+      field.fieldLocation.latitude,
+      field.fieldLocation.longitude
+    ),
+  ]);
+
+  const prompt = buildFieldInsightPrompt(field, latest, soil, detail);
+
+  const insight = await createChatCompletion(prompt, {
+    maxTokens: detail === "brief" ? 320 : 1000,
+    temperature: 0.35,
+  });
+
+  return {
+    fieldId: field.fieldId,
+    detail,
+    generatedAt: new Date().toISOString(),
+    basedOn: {
+      reading: latest,
+      soil,
+    },
+    insight,
+  };
+};
+
 export const fieldServices = {
   createFieldIntoDB,
   getAllFieldsFromDB,
@@ -284,4 +182,5 @@ export const fieldServices = {
   updateFieldData,
   softDeleteFieldInDB,
   getFieldWeather,
+  getFieldInsight,
 };

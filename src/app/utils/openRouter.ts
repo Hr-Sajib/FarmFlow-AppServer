@@ -56,6 +56,41 @@ const assertWithinRateLimit = (): void => {
   callTimestamps.push(now);
 };
 
+/**
+ * Turns a provider failure into something a farmer can act on.
+ *
+ * The free tier answers with 402 once its daily allowance is spent and 429 when
+ * requests come too fast. Passing those through verbatim tells the user nothing
+ * about what to do next.
+ */
+const toAdvisoryError = (error: unknown): AppError => {
+  const message = error instanceof Error ? error.message : "unknown error";
+
+  if (message.includes("402")) {
+    return new AppError(
+      httpStatus.SERVICE_UNAVAILABLE,
+      "The advisory service has used up today's allowance. It will be available again tomorrow."
+    );
+  }
+  if (message.includes("429")) {
+    return new AppError(
+      httpStatus.TOO_MANY_REQUESTS,
+      "The advisory service is busy right now. Try again in a minute."
+    );
+  }
+  if (message.includes("404") || message.toLowerCase().includes("model")) {
+    return new AppError(
+      httpStatus.SERVICE_UNAVAILABLE,
+      "The advisory model is unavailable. An administrator needs to check the configured model."
+    );
+  }
+
+  return new AppError(
+    httpStatus.BAD_GATEWAY,
+    `Advisory model request failed: ${message}`
+  );
+};
+
 /** OpenAI-compatible content part: text, or an image referenced by URL. */
 export type TContentPart =
   | { type: "text"; text: string }
@@ -83,7 +118,22 @@ export const createChatCompletion = async (
       max_tokens: options.maxTokens ?? 1200,
     });
 
-    const text = response.choices[0]?.message?.content?.trim();
+    /**
+     * OpenRouter answers a rejected request with an error object in place of
+     * `choices`, so indexing straight into it turned a quota or availability
+     * problem into an opaque TypeError. Read the provider's own message
+     * instead — that is what makes the failure diagnosable.
+     */
+    const providerError = (response as unknown as { error?: { message?: string; code?: number } })
+      .error;
+    if (providerError) {
+      throw new AppError(
+        httpStatus.BAD_GATEWAY,
+        `Advisory model unavailable: ${providerError.message ?? "provider rejected the request"}`
+      );
+    }
+
+    const text = response.choices?.[0]?.message?.content?.trim();
     if (!text) {
       throw new AppError(
         httpStatus.BAD_GATEWAY,
@@ -93,15 +143,7 @@ export const createChatCompletion = async (
     return text;
   } catch (error) {
     if (error instanceof AppError) throw error;
-
-    // Surface upstream failures as a clear 502 rather than a generic 500, so a
-    // withdrawn or rate-limited model is diagnosable from the response alone.
-    throw new AppError(
-      httpStatus.BAD_GATEWAY,
-      `Advisory model request failed: ${
-        error instanceof Error ? error.message : "unknown error"
-      }`
-    );
+    throw toAdvisoryError(error);
   }
 };
 
@@ -144,12 +186,7 @@ export const streamChatCompletion = async (
     // disagreeing with what was displayed.
     if (full.trim()) return full.trim();
 
-    throw new AppError(
-      httpStatus.BAD_GATEWAY,
-      `Advisory model request failed: ${
-        error instanceof Error ? error.message : "unknown error"
-      }`
-    );
+    throw toAdvisoryError(error);
   }
 
   if (!full.trim()) {

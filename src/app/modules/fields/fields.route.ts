@@ -41,18 +41,11 @@ router.get(
   fieldController.getFieldWeather
 );
 
-/* ---------------------------------------------------------------------------
- * DISABLED: AI insight endpoints.
- * -------------------------------------------------------------------------*/
-// router.post(
-//   "/:fieldId/insights",
-//   auth("admin", "farmer"),
-//   fieldController.getFieldInsights
-// );
-// router.post(
-//   "/:fieldId/longInsights",
-//   auth("admin", "farmer"),
-//   fieldController.getFieldLongInsights
-// );
+// Crop advisory for one field. `?detail=full` returns the longer assessment.
+router.get(
+  "/:fieldId/insight",
+  auth("admin", "farmer"),
+  fieldController.getFieldInsight
+);
 
 export const FieldRoutes = router;
