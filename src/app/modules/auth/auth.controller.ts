@@ -4,17 +4,32 @@ import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { authServices } from "./auth.service";
 
-const refreshCookieOptions = {
+const baseCookieOptions = {
   httpOnly: true,
   secure: config.NODE_ENV === "production",
   sameSite: config.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
+};
+
+const refreshCookieOptions = {
+  ...baseCookieOptions,
   maxAge: 1000 * 60 * 60 * 24 * 365,
+};
+
+/**
+ * The access token is issued as an httpOnly cookie as well as in the response
+ * body. The cookie is what lets Next.js server components forward credentials
+ * when fetching on the server; the body copy remains for non-browser clients.
+ */
+const accessCookieOptions = {
+  ...baseCookieOptions,
+  maxAge: 1000 * 60 * 60 * 24,
 };
 
 const loginUser = catchAsync(async (req, res) => {
   const { refreshToken, accessToken } = await authServices.loginUserIntoDB(req.body);
 
   res.cookie("refreshToken", refreshToken, refreshCookieOptions);
+  res.cookie("accessToken", accessToken, accessCookieOptions);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -25,7 +40,8 @@ const loginUser = catchAsync(async (req, res) => {
 });
 
 const logout = catchAsync(async (req, res) => {
-  res.clearCookie("refreshToken", { ...refreshCookieOptions, maxAge: undefined });
+  res.clearCookie("refreshToken", { ...baseCookieOptions });
+  res.clearCookie("accessToken", { ...baseCookieOptions });
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -36,6 +52,7 @@ const logout = catchAsync(async (req, res) => {
 
 const refreshToken = catchAsync(async (req, res) => {
   const result = await authServices.refreshToken(req.cookies.refreshToken);
+  res.cookie("accessToken", result.accessToken, accessCookieOptions);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -69,7 +86,8 @@ const verifyResetCode = catchAsync(async (req, res) => {
 /** Stage 3 of 3. */
 const resetPassword = catchAsync(async (req, res) => {
   const result = await authServices.resetPassword(req.body);
-  res.clearCookie("refreshToken", { ...refreshCookieOptions, maxAge: undefined });
+  res.clearCookie("refreshToken", { ...baseCookieOptions });
+  res.clearCookie("accessToken", { ...baseCookieOptions });
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -80,7 +98,8 @@ const resetPassword = catchAsync(async (req, res) => {
 
 const changePassword = catchAsync(async (req, res) => {
   const result = await authServices.changePassword(req.user.userId, req.body);
-  res.clearCookie("refreshToken", { ...refreshCookieOptions, maxAge: undefined });
+  res.clearCookie("refreshToken", { ...baseCookieOptions });
+  res.clearCookie("accessToken", { ...baseCookieOptions });
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

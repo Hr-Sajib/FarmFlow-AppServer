@@ -9,7 +9,9 @@ import { UserModel } from "../modules/user/user.model";
 
 const auth = (...requiredRoles: string[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    let token = req.headers.authorization;
+    // Header for API clients; cookie so Next.js server components can forward
+    // credentials without reading a token into JavaScript.
+    let token = req.headers.authorization || req.cookies?.accessToken;
 
     if (!token) {
       throw new AppError(
