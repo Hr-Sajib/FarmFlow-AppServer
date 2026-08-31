@@ -17,7 +17,7 @@ import {
   buildCompressionPrompt,
   transcriptWordCount,
 } from "./advisorySession.utils";
-import { createChatCompletion } from "../../utils/openRouter";
+import { createChatCompletion, streamChatCompletion } from "../../utils/openRouter";
 import config from "../../../config";
 
 const createSessionIntoDB = async (
@@ -214,7 +214,8 @@ const compressSessionContext = async (sessionId: string) => {
  * the AI stops answering so the two are never talking at once.
  */
 const generateAiReplyForSession = async (
-  sessionId: string
+  sessionId: string,
+  onChunk?: (delta: string) => void
 ): Promise<IAdvisoryMessage | null> => {
   const session = await AdvisorySessionModel.findOne({
     _id: sessionId,
@@ -225,7 +226,13 @@ const generateAiReplyForSession = async (
   }
   if (session.status !== "ai_active") return null;
 
-  const replyText = await createChatCompletion(buildAdvisoryPrompt(session));
+  const prompt = buildAdvisoryPrompt(session);
+
+  // Streamed when the caller supplies a chunk handler, so the socket can relay
+  // tokens as they arrive; buffered otherwise.
+  const replyText = onChunk
+    ? await streamChatCompletion(prompt, onChunk)
+    : await createChatCompletion(prompt);
 
   const message: IAdvisoryMessage = {
     senderRole: "ai",

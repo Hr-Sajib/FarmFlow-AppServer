@@ -37,7 +37,12 @@ const emitAiReply = async (
 
   try {
     const message = await advisorySessionServices.generateAiReplyForSession(
-      sessionId
+      sessionId,
+      // Relayed to the room as they arrive so the reply is seen forming; the
+      // completed message follows on session:message and replaces the
+      // accumulated text.
+      (delta) =>
+        nsp.to(roomOf(sessionId)).emit("session:message-chunk", { sessionId, delta })
     );
     // null means a human expert has taken over; the AI stays quiet.
     if (message) {

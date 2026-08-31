@@ -104,3 +104,59 @@ export const createChatCompletion = async (
     );
   }
 };
+
+/**
+ * Streaming variant. Same request, but tokens are handed to `onChunk` as they
+ * arrive and the accumulated text is returned at the end.
+ *
+ * On the free tier a full answer takes tens of seconds; streaming does not make
+ * that faster, but it makes it usable — the farmer sees the reply forming
+ * instead of watching a spinner.
+ */
+export const streamChatCompletion = async (
+  messages: TChatMessage[],
+  onChunk: (delta: string) => void,
+  options: { maxTokens?: number; temperature?: number } = {}
+): Promise<string> => {
+  assertWithinRateLimit();
+
+  let full = "";
+
+  try {
+    const stream = await getClient().chat.completions.create({
+      model: config.openrouter.model,
+      messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
+      temperature: options.temperature ?? 0.4,
+      max_tokens: options.maxTokens ?? 1200,
+      stream: true,
+    });
+
+    for await (const part of stream) {
+      const delta = part.choices[0]?.delta?.content;
+      if (delta) {
+        full += delta;
+        onChunk(delta);
+      }
+    }
+  } catch (error) {
+    // Partial text is returned rather than discarded: the farmer has already
+    // seen it on screen, and dropping it would leave the transcript
+    // disagreeing with what was displayed.
+    if (full.trim()) return full.trim();
+
+    throw new AppError(
+      httpStatus.BAD_GATEWAY,
+      `Advisory model request failed: ${
+        error instanceof Error ? error.message : "unknown error"
+      }`
+    );
+  }
+
+  if (!full.trim()) {
+    throw new AppError(
+      httpStatus.BAD_GATEWAY,
+      "The advisory model returned an empty response"
+    );
+  }
+  return full.trim();
+};

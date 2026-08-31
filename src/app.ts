@@ -8,7 +8,6 @@ import { AuthRoutes } from "./app/modules/auth/auth.route";
 import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
 import { PostRoutes } from "./app/modules/posts/post.route";
 import { FieldRoutes } from "./app/modules/fields/fields.route";
-import { ChatRoutes } from "./app/modules/chat/chat.route";
 import { UploadRoutes } from "./app/modules/upload/upload.route";
 import { AdvisorySessionRoutes } from "./app/modules/advisorySession/advisorySession.route";
 
@@ -39,7 +38,6 @@ app.use("/auth", AuthRoutes);
 app.use("/sensorData", sensorRoutes);
 app.use("/post", PostRoutes);
 app.use("/field", FieldRoutes);
-app.use("/chat", ChatRoutes);
 app.use("/upload", UploadRoutes);
 app.use("/advisory", AdvisorySessionRoutes);
 
