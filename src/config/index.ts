@@ -29,6 +29,8 @@ export default {
     keep_recent_messages: parseInt(process.env.ADVISORY_KEEP_RECENT || '6', 10),
   },
 
+  client_origin: process.env.CLIENT_ORIGIN || 'http://localhost:3002',
+
   admin_email: process.env.ADMIN_EMAIL,
   admin_password: process.env.ADMIN_PASSWORD,
   admin_name: process.env.ADMIN_NAME || 'FarmFlow Admin',

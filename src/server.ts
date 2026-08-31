@@ -5,19 +5,21 @@ import mongoose from "mongoose";
 import app from "./app";
 import config from "./config";
 import { setupAdvisorySocket } from "./app/modules/advisorySession/advisorySession.socket";
+import { setupTelemetrySocket } from "./app/socket/telemetrySocket";
 import { initializeMqttClient } from "./app/modules/sensorData/mqtt.service";
 import { seedAdmin } from "./app/utils/seedAdmin";
 
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: "http://localhost:3002", // Restrict to Next.js frontend
+    origin: config.client_origin, // Next.js frontend
     methods: ["GET", "POST"],
   },
 });
 
 // Setup chat-specific Socket.IO logic
 setupAdvisorySocket(io);
+setupTelemetrySocket(io);
 
 async function main() {
   try {

@@ -3,6 +3,7 @@ import mqtt, { MqttClient, IClientOptions } from "mqtt";
 import config from "../../../config";
 import { sensorDataServices } from "./sensorData.service";
 import { toTelemetry } from "./sensorData.utils";
+import { broadcastTelemetry } from "../../socket/telemetrySocket";
 
 /**
  * Topics carry no meaning any more — identity comes from farmerId/fieldId in
@@ -67,6 +68,10 @@ export const initializeMqttClient = (): void => {
       }
 
       await sensorDataServices.createTelemetryIntoDB(entry);
+
+      // Push to anyone watching this farm. Stored first, so a dropped socket
+      // never costs a reading.
+      broadcastTelemetry(entry);
     } catch (error) {
       // A malformed message from one device must not stop the subscriber.
       console.error(

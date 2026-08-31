@@ -15,6 +15,7 @@ declare namespace NodeJS {
     OPENROUTER_RPM?: string;
     ADVISORY_CONTEXT_WORD_LIMIT?: string;
     ADVISORY_KEEP_RECENT?: string;
+    CLIENT_ORIGIN?: string;
     ADMIN_EMAIL?: string;
     ADMIN_PASSWORD?: string;
     ADMIN_NAME?: string;
