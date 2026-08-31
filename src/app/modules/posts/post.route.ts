@@ -1,46 +1,52 @@
 import express from "express";
 import auth from "../../middlewares/auth";
-import { generateStaticPdfController, postController } from "./post.controller";
 import validateRequest from "../../middlewares/validateRequest";
+import { postController } from "./post.controller";
 import { PostValidation } from "./post.validation";
 
 const router = express.Router();
 
-// Create a post
+// The forum is open to every signed-in role.
+const anyRole = auth("admin", "farmer", "expert");
+
+router.get("/", anyRole, postController.getAllPosts);
+
+// Previously the controller and service existed with no route registered, so
+// fetching a single post was unreachable.
+router.get("/:postId", anyRole, postController.getPostById);
+
 router.post(
   "/",
-  auth("admin", "farmer"),
+  anyRole,
   validateRequest(PostValidation.createPostValidationSchema),
   postController.createPost
 );
 
-// Update a post
+// Author only — an admin can remove a post but not rewrite it.
 router.patch(
   "/:postId",
-  auth("admin", "farmer"),
+  anyRole,
   validateRequest(PostValidation.updatePostValidationSchema),
   postController.updatePost
 );
 
-// Delete a post
-router.delete("/:postId", auth("admin", "farmer"), postController.deletePost);
+// Author or admin.
+router.delete("/:postId", anyRole, postController.softDeletePost);
 
-// Add a comment to a post
-router.post("/comment/:postId", auth("admin", "farmer"), postController.addComment);
+// Set or switch a reaction; DELETE clears it.
+router.post(
+  "/:postId/react",
+  anyRole,
+  validateRequest(PostValidation.reactToPostValidationSchema),
+  postController.setPostReaction
+);
+router.delete("/:postId/react", anyRole, postController.removePostReaction);
 
-// Like a post
-router.post("/like/:postId", auth("admin", "farmer"), postController.likePost);
-router.post("/removeLike/:postId", auth("admin", "farmer"), postController.removeLikeFromPost);
-
-// Dislike a post
-router.post("/dislike/:postId", auth("admin", "farmer"), postController.dislikePost);
-router.post("/removeDislike/:postId", auth("admin", "farmer"), postController.removeDislikeFromPost);
-
-// Read all posts
-router.get("/", 
-  // auth("admin", "farmer"), 
-  postController.getAllPosts);
-
-
+router.post(
+  "/:postId/comment",
+  anyRole,
+  validateRequest(PostValidation.createCommentValidationSchema),
+  postController.addComment
+);
 
 export const PostRoutes = router;

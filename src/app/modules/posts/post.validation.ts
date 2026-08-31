@@ -59,6 +59,16 @@ const createCommentValidationSchema = z.object({
     .strict(),
 });
 
+const reactToPostValidationSchema = z.object({
+  body: z
+    .object({
+      reaction: z.enum(["like", "dislike"], {
+        errorMap: () => ({ message: "Reaction must be either 'like' or 'dislike'" }),
+      }),
+    })
+    .strict(),
+});
+
 /** Marking a question answered — only the post author or an admin may do this. */
 const acceptAnswerValidationSchema = z.object({
   body: z
@@ -72,6 +82,7 @@ const acceptAnswerValidationSchema = z.object({
 
 export const PostValidation = {
   createPostValidationSchema,
+  reactToPostValidationSchema,
   updatePostValidationSchema,
   createCommentValidationSchema,
   acceptAnswerValidationSchema,

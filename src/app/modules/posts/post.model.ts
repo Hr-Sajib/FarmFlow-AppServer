@@ -20,14 +20,8 @@ const CREATOR_ROLES = ["farmer", "expert", "admin"];
 
 const reactionSchema = new Schema<TReaction>(
   {
-    likes: {
-      count: { type: Number, default: 0 },
-      by: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    },
-    dislikes: {
-      count: { type: Number, default: 0 },
-      by: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    },
+    likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    dislikes: [{ type: Schema.Types.ObjectId, ref: "User" }],
   },
   { _id: false }
 );
@@ -88,10 +82,7 @@ const postSchema = new Schema<IPost>(
 
     reactions: {
       type: reactionSchema,
-      default: () => ({
-        likes: { count: 0, by: [] },
-        dislikes: { count: 0, by: [] },
-      }),
+      default: () => ({ likes: [], dislikes: [] }),
     },
     comments: { type: [commentSchema], default: [] },
 

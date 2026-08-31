@@ -1,145 +1,34 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
+import httpStatus from "http-status";
+
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
-import httpStatus from "http-status";
 import { postServices } from "./post.service";
-import { PostValidation } from "./post.validation";
-import AppError from "../../errors/AppError";
-import { generateStaticPdf } from "../../utils/pdfCreate";
-import { PostModel } from "./post.model";
-import { jsonMultiToXlsxBuffer } from "../../utils/jsonToXlsx";
-import { UserModel } from "../user/user.model";
+import { TActor } from "./post.utils";
 
-// Create a new post
+const actorOf = (req: Request): TActor => ({
+  userId: req.user.userId,
+  role: req.user.role,
+  userCode: req.user.userCode,
+});
+
 const createPost = catchAsync(async (req: Request, res: Response) => {
-
-  const postData = req.body;
-
-  const userId = req.user.userId;
-
-  const newPost = await postServices.createPost(postData, userId);
-
+  const post = await postServices.createPostIntoDB(req.body, actorOf(req));
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
     message: "Post created successfully",
-    data: newPost,
+    data: post,
   });
 });
 
-// Update an existing post
-const updatePost = catchAsync(async (req: Request, res: Response) => {
-  const { postId } = req.params;
-  const postData = req.body;
-  const userId = req.user.userId;
-  const role = req.user.role;
-
-  const updatedPost = await postServices.updatePost(postId, postData, userId, role);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Post updated successfully",
-    data: updatedPost,
-  });
-});
-
-// Delete a post
-const deletePost = catchAsync(async (req: Request, res: Response) => {
-  const { postId } = req.params;
-  const userId = req.user.userId;
-  const role = req.user.role;
-
-  await postServices.deletePost(postId, userId, role);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Post deleted successfully",
-    data: null,
-  });
-});
-
-// Add a comment to a post
-const addComment = catchAsync(async (req: Request, res: Response) => {
-  const { postId } = req.params;
-  const commentData = req.body;
-  const userId = req.user.userId;
-
-
-  const updatedPost = await postServices.addComment(postId, userId, commentData);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Comment added successfully",
-    data: updatedPost,
-  });
-});
-
-// Like a post
-const likePost = catchAsync(async (req: Request, res: Response) => {
-  const { postId } = req.params;
-  const userId = req.user.userId;
-
-  const updatedPost = await postServices.likePost(postId, userId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Post liked successfully",
-    data: updatedPost,
-  });
-});
-
-// Dislike a post
-const dislikePost = catchAsync(async (req: Request, res: Response) => {
-  const { postId } = req.params;
-  const userId = req.user.userId;
-
-  const updatedPost = await postServices.dislikePost(postId, userId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Post disliked successfully",
-    data: updatedPost,
-  });
-});
-
-// Remove a like from a post
-const removeLikeFromPost = catchAsync(async (req: Request, res: Response) => {
-  const { postId } = req.params;
-  const userId = req.user.userId;
-
-  const updatedPost = await postServices.removeLikeFromPost(postId, userId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Like removed successfully",
-    data: updatedPost,
-  });
-});
-
-// Remove a dislike from a post
-const removeDislikeFromPost = catchAsync(async (req: Request, res: Response) => {
-  const { postId } = req.params;
-  const userId = req.user.userId;
-
-  const updatedPost = await postServices.removeDislikeFromPost(postId, userId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Dislike removed successfully",
-    data: updatedPost,
-  });
-});
-// Get all posts
 const getAllPosts = catchAsync(async (req: Request, res: Response) => {
-  const posts = await postServices.getAllPostsFromDB();
-
+  const { topic, region, creatorId } = req.query as {
+    topic?: string;
+    region?: string;
+    creatorId?: string;
+  };
+  const posts = await postServices.getAllPostsFromDB({ topic, region, creatorId });
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -148,15 +37,8 @@ const getAllPosts = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// Get a single post by ID
 const getPostById = catchAsync(async (req: Request, res: Response) => {
-  const { postId } = req.params;
-
-  const post = await postServices.getPostByIdFromDB(postId);
-  if (!post) {
-    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
-  }
-
+  const post = await postServices.getPostByIdFromDB(req.params.postId);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -165,31 +47,81 @@ const getPostById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
-
-export const generateStaticPdfController = catchAsync(async (req: Request, res: Response) => {
-  const pdfBuffer = await generateStaticPdf();
-
-  res.set({
-    "Content-Type": "application/pdf",
-    "Content-Disposition": "attachment; filename=farmflow-static-report.pdf",
+const updatePost = catchAsync(async (req: Request, res: Response) => {
+  const post = await postServices.updatePostData(
+    req.params.postId,
+    req.body,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Post updated successfully",
+    data: post,
   });
-
-  res.status(httpStatus.OK).send(pdfBuffer);
 });
 
+const softDeletePost = catchAsync(async (req: Request, res: Response) => {
+  const post = await postServices.softDeletePostInDB(
+    req.params.postId,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Post deleted successfully",
+    data: post,
+  });
+});
+
+const setPostReaction = catchAsync(async (req: Request, res: Response) => {
+  const post = await postServices.setPostReactionInDB(
+    req.params.postId,
+    req.body.reaction,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: `Post ${req.body.reaction}d`,
+    data: post,
+  });
+});
+
+const removePostReaction = catchAsync(async (req: Request, res: Response) => {
+  const post = await postServices.removePostReactionFromDB(
+    req.params.postId,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Reaction removed",
+    data: post,
+  });
+});
+
+const addComment = catchAsync(async (req: Request, res: Response) => {
+  const post = await postServices.addCommentIntoPost(
+    req.params.postId,
+    req.body,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Comment added successfully",
+    data: post,
+  });
+});
 
 export const postController = {
   createPost,
-  updatePost,
-  deletePost,
-  addComment,
-  likePost,
-  dislikePost,
   getAllPosts,
   getPostById,
-  removeDislikeFromPost,
-  removeLikeFromPost,
-  generateStaticPdfController,
-  // exportPostsXlsx
+  updatePost,
+  softDeletePost,
+  setPostReaction,
+  removePostReaction,
+  addComment,
 };

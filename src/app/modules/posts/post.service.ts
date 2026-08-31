@@ -1,274 +1,171 @@
-import AppError from "../../errors/AppError";
 import httpStatus from "http-status";
-import { IPost, TComment } from "./post.interface";
+
+import AppError from "../../errors/AppError";
+import { IPost, TComment, TReactionType } from "./post.interface";
 import { PostModel } from "./post.model";
-import { UserModel } from "../user/user.model";
+import {
+  TActor,
+  getPostOr404,
+  assertCanEdit,
+  assertCanDelete,
+  POST_POPULATE,
+} from "./post.utils";
 
-const createPost = async (postData: IPost, userId: string) => {
-  
-  const user = await UserModel.findOne({ _id: userId });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
-
-  const post = {
-    creatorId: user._id,
-    creatorRole: user.role,
+const createPostIntoDB = async (postData: Partial<IPost>, actor: TActor) => {
+  const created = await PostModel.create({
     postText: postData.postText,
     postImage: postData.postImage,
-    postTopics: postData.postTopics,
+    postTopics: postData.postTopics ?? [],
     region: postData.region,
-  }
-
-
-  const newPost = await PostModel.create(post);
-  return newPost;
-};
-
-const updatePost = async (
-  postId: string,
-  postData: Partial<IPost>,
-  userId: string,
-  role: string
-) => {
-  const post = await PostModel.findById(postId);
-  if (!post) {
-    throw new AppError(httpStatus.NOT_FOUND, "Post not found");
-  }
-
-  const user = await UserModel.findOne({ _id: userId });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
-
-  if (role !== "admin" && !post.creatorId.equals(user._id)) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only update your own posts");
-  }
-
-  const updateData = {
-    postText: postData.postText,
-    postImage: postData.postImage
-  }
-
-  const updatedPost = await PostModel.findByIdAndUpdate(postId, updateData, {
-    new: true
+    // Author and role come from the token, never the body.
+    creatorId: actor.userId,
+    creatorRole: actor.role,
   });
-  return updatedPost;
+
+  return created.populate(POST_POPULATE);
 };
 
-const deletePost = async (postId: string, userId: string, role: string) => {
-  const post = await PostModel.findById(postId);
-  if (!post) {
-    throw new AppError(httpStatus.NOT_FOUND, "Post not found");
-  }
+const getAllPostsFromDB = async (filters: {
+  topic?: string;
+  region?: string;
+  creatorId?: string;
+}) => {
+  const query: Record<string, unknown> = { isDeleted: false };
+  if (filters.topic) query.postTopics = filters.topic;
+  if (filters.region) query.region = filters.region;
+  if (filters.creatorId) query.creatorId = filters.creatorId;
 
-  const user = await UserModel.findOne({ _id: userId });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
-
-  if (role !== "admin" && !post.creatorId.equals(user._id)) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only delete your own posts");
-  }
-
-  await PostModel.findByIdAndDelete(postId);
-};
-
-const addComment = async (postId: string,userId: string, commentData:TComment) => {
-
-  const post = await PostModel.findById(postId);
-  if (!post) {
-    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
-  }
-
-  // Find the user by commenterId and ensure not deleted
-  const user = await UserModel.findOne({ _id: userId });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
-
-  const commentInput = {
-    commenterId: user._id,
-    commenterRole: user.role,
-    commentText: commentData.commentText,
-  }
-
-
-  const updatedPost = await PostModel.findByIdAndUpdate(
-    postId,
-    { $push: { comments: commentInput } },
-    { new: true }
-  );
-
-  if (!updatedPost) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to add comment!");
-  }
-
-  return updatedPost;
-};
-
-
-const likePost = async (postId: string, userId: string) => {
-
-  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
-
-  // Find the post and ensure it exists
-  const post = await PostModel.findById(postId);
-  if (!post) {
-    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
-  }
-
-  // Check if user has already liked the post
-  if (post.reactions.likes.by.includes(user._id)) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You already liked this post!");
-  }
-  if (post.reactions.dislikes.by.includes(user._id)) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You already disliked this post!");
-  }
-
-  // Update likes count and add user ID to likes.by
-  const updatedPost = await PostModel.findByIdAndUpdate(
-    postId,
-    {
-      $inc: { "reactions.likes.count": 1 },
-      $addToSet: { "reactions.likes.by": user._id },
-    },
-    { new: true }
-  );
-
-  if (!updatedPost) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to like post!");
-  }
-
-  return updatedPost;
-};
-
-const dislikePost = async (postId: string, userId: string) => {
-  const post = await PostModel.findById(postId);
-  if (!post) {
-    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
-  }
-  
-  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
-
-  // Check if user has already liked the post
-  if (post.reactions.dislikes.by.includes(user._id)) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You already disliked this post!");
-  }
-  if (post.reactions.likes.by.includes(user._id)) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You already liked this post!");
-  }
-
-  // Update likes count and add user ID to likes.by
-  const updatedPost = await PostModel.findByIdAndUpdate(
-    postId,
-    {
-      $inc: { "reactions.dislikes.count": 1 },
-      $addToSet: { "reactions.dislikes.by": user._id },
-    },
-    { new: true }
-  );
-
-  if (!updatedPost) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to dislike post!");
-  }
-
-  return updatedPost;
-};
-
-const removeLikeFromPost = async (postId: string, userId: string) => {
-  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
-
-  const post = await PostModel.findById(postId);
-  if (!post) {
-    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
-  }
-
-  if (!post.reactions.likes.by.includes(user._id)) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You have not liked this post!");
-  }
-
-  const updatedPost = await PostModel.findByIdAndUpdate(
-    postId,
-    {
-      $inc: { "reactions.likes.count": -1 },
-      $pull: { "reactions.likes.by": user._id },
-    },
-    { new: true }
-  );
-
-  if (!updatedPost) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to remove like from post!");
-  }
-
-  return updatedPost;
-};
-
-const removeDislikeFromPost = async (postId: string, userId: string) => {
-  const user = await UserModel.findOne({ _id: userId }).where({ isDeleted: false });
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found!");
-  }
-
-  const post = await PostModel.findById(postId);
-  if (!post) {
-    throw new AppError(httpStatus.NOT_FOUND, "Post not found!");
-  }
-
-  if (!post.reactions.dislikes.by.includes(user._id)) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You have not disliked this post!");
-  }
-
-  const updatedPost = await PostModel.findByIdAndUpdate(
-    postId,
-    {
-      $inc: { "reactions.dislikes.count": -1 },
-      $pull: { "reactions.dislikes.by": user._id },
-    },
-    { new: true }
-  );
-
-  if (!updatedPost) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to remove dislike from post!");
-  }
-
-  return updatedPost;
-};
-
-const getAllPostsFromDB = async () => {
-  const posts = await PostModel.find()
-    .populate("creatorId", "fullName photo role")
-    .populate("comments.commenterId", "fullName photo role");
-  return posts;
+  return PostModel.find(query).populate(POST_POPULATE).sort({ createdAt: -1 });
 };
 
 const getPostByIdFromDB = async (postId: string) => {
-  const post = await PostModel.findById(postId)
-    .populate("creatorId", "fullName photo role")
-    .populate("comments.commenterId", "fullName photo role");
+  const post = await PostModel.findOne({ _id: postId, isDeleted: false }).populate(
+    POST_POPULATE
+  );
+  if (!post) {
+    throw new AppError(httpStatus.NOT_FOUND, "Post not found");
+  }
   return post;
 };
 
+/** Author only — see assertCanEdit. */
+const updatePostData = async (
+  postId: string,
+  postData: Partial<IPost>,
+  actor: TActor
+) => {
+  const post = await getPostOr404(postId);
+  assertCanEdit(post, actor);
 
+  const updated = await PostModel.findByIdAndUpdate(
+    postId,
+    { $set: postData },
+    { new: true, runValidators: true }
+  ).populate(POST_POPULATE);
+
+  if (!updated) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to update post");
+  }
+  return updated;
+};
+
+/** Author or admin. Soft delete, so comment threads stay resolvable. */
+const softDeletePostInDB = async (postId: string, actor: TActor) => {
+  const post = await getPostOr404(postId);
+  assertCanDelete(post, actor);
+
+  return PostModel.findByIdAndUpdate(postId, { isDeleted: true }, { new: true });
+};
+
+/**
+ * Sets or switches a reaction in one atomic update: the chosen list gains the
+ * user, the opposite list loses them. $addToSet is idempotent, so repeating
+ * the same call cannot register a second vote and no read-then-write race
+ * exists.
+ */
+const setPostReactionInDB = async (
+  postId: string,
+  reaction: TReactionType,
+  actor: TActor
+) => {
+  await getPostOr404(postId);
+
+  const add = reaction === "like" ? "reactions.likes" : "reactions.dislikes";
+  const remove = reaction === "like" ? "reactions.dislikes" : "reactions.likes";
+
+  const updated = await PostModel.findByIdAndUpdate(
+    postId,
+    {
+      $addToSet: { [add]: actor.userId },
+      $pull: { [remove]: actor.userId },
+    },
+    { new: true }
+  ).populate(POST_POPULATE);
+
+  if (!updated) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to react to post");
+  }
+  return updated;
+};
+
+/** Clears whichever reaction the caller holds; a no-op if they had none. */
+const removePostReactionFromDB = async (postId: string, actor: TActor) => {
+  await getPostOr404(postId);
+
+  const updated = await PostModel.findByIdAndUpdate(
+    postId,
+    {
+      $pull: {
+        "reactions.likes": actor.userId,
+        "reactions.dislikes": actor.userId,
+      },
+    },
+    { new: true }
+  ).populate(POST_POPULATE);
+
+  if (!updated) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to remove reaction"
+    );
+  }
+  return updated;
+};
+
+const addCommentIntoPost = async (
+  postId: string,
+  commentData: Pick<TComment, "commentText">,
+  actor: TActor
+) => {
+  await getPostOr404(postId);
+
+  const updated = await PostModel.findByIdAndUpdate(
+    postId,
+    {
+      $push: {
+        comments: {
+          commenterId: actor.userId,
+          commenterRole: actor.role,
+          commentText: commentData.commentText,
+        },
+      },
+    },
+    { new: true, runValidators: true }
+  ).populate(POST_POPULATE);
+
+  if (!updated) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to add comment");
+  }
+  return updated;
+};
 
 export const postServices = {
-  createPost,
-  updatePost,
-  deletePost,
-  addComment,
-  likePost,
-  dislikePost,
+  createPostIntoDB,
   getAllPostsFromDB,
   getPostByIdFromDB,
-  removeDislikeFromPost,
-  removeLikeFromPost
+  updatePostData,
+  softDeletePostInDB,
+  setPostReactionInDB,
+  removePostReactionFromDB,
+  addCommentIntoPost,
 };

@@ -56,16 +56,19 @@ export type TRegion =
   | "rangpur"
   | "sylhet";
 
+/**
+ * Just the voter ids — no stored counts. A `count` field alongside the array
+ * is a denormalised copy that drifts, and maintaining it required a
+ * read-check-then-$inc sequence that two concurrent requests could both pass.
+ * Counts are derived from array length; $addToSet/$pull make a second reaction
+ * from the same user structurally impossible rather than merely checked.
+ */
 export type TReaction = {
-  likes: {
-    count: number;
-    by: Types.ObjectId[];
-  };
-  dislikes: {
-    count: number;
-    by: Types.ObjectId[];
-  };
+  likes: Types.ObjectId[];
+  dislikes: Types.ObjectId[];
 };
+
+export type TReactionType = "like" | "dislike";
 
 export type TComment = {
   /** Name and photo are populated from this ref, never copied — copies go stale. */
