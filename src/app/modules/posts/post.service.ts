@@ -1,4 +1,4 @@
-import AppError from "../../../errors/AppError";
+import AppError from "../../errors/AppError";
 import httpStatus from "http-status";
 import { IPost, TComment } from "./post.interface";
 import { PostModel } from "./post.model";

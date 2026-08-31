@@ -2,8 +2,8 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 
 import { AuthController } from "./auth.controller";
-import validateRequest from "../../../middlewares/validateRequest";
-import auth from "../../../middlewares/auth";
+import validateRequest from "../../middlewares/validateRequest";
+import auth from "../../middlewares/auth";
 import { AuthValidation } from "./auth.validation";
 
 const router = express.Router();

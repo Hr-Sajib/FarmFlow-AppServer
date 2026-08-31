@@ -1,9 +1,9 @@
 import httpStatus from "http-status";
 
-import AppError from "../../../errors/AppError";
+import AppError from "../../errors/AppError";
 import { IUser, TUserRole } from "./user.interface";
 import { UserModel } from "./user.model";
-import { generateUserCode } from "../../../utils/generateIds";
+import { generateUserCode } from "../../utils/generateIds";
 
 const createUserIntoDB = async (payload: IUser) => {
   const existing = await UserModel.findOne({ email: payload.email });

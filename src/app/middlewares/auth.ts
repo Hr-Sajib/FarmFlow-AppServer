@@ -5,7 +5,7 @@ import jwt, { JwtPayload, TokenExpiredError, JsonWebTokenError } from "jsonwebto
 import config from "../../config";
 import catchAsync from "../utils/catchAsync";
 import AppError from "../errors/AppError";
-import { UserModel } from "../modules/appData/user/user.model";
+import { UserModel } from "../modules/user/user.model";
 
 const auth = (...requiredRoles: string[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {

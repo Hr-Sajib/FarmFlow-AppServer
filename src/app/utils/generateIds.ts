@@ -1,7 +1,7 @@
 import { randomInt } from "crypto";
-import { FieldModel } from "../modules/appData/fields/fields.model";
-import { UserModel } from "../modules/appData/user/user.model";
-import { TUserRole } from "../modules/appData/user/user.interface";
+import { FieldModel } from "../modules/fields/fields.model";
+import { UserModel } from "../modules/user/user.model";
+import { TUserRole } from "../modules/user/user.interface";
 import AppError from "../errors/AppError";
 import httpStatus from "http-status";
 

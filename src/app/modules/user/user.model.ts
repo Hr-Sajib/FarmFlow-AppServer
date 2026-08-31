@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
-import config from "../../../../config/index";
+import config from "../../../config/index";
 import { IDesignation, IUser } from "./user.interface";
 
 const designationSchema = new Schema<IDesignation>(

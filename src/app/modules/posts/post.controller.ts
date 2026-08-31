@@ -1,13 +1,13 @@
 import { NextFunction, Request, Response } from "express";
-import catchAsync from "../../../utils/catchAsync";
-import sendResponse from "../../../utils/sendResponse";
+import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
 import httpStatus from "http-status";
 import { postServices } from "./post.service";
 import { PostValidation } from "./post.validation";
-import AppError from "../../../errors/AppError";
-import { generateStaticPdf } from "../../../utils/pdfCreate";
+import AppError from "../../errors/AppError";
+import { generateStaticPdf } from "../../utils/pdfCreate";
 import { PostModel } from "./post.model";
-import { jsonMultiToXlsxBuffer } from "../../../utils/jsonToXlsx";
+import { jsonMultiToXlsxBuffer } from "../../utils/jsonToXlsx";
 import { UserModel } from "../user/user.model";
 
 // Create a new post

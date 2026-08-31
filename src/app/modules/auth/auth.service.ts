@@ -5,10 +5,10 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { UserModel } from "../user/user.model";
 import { PasswordResetModel } from "./passwordReset.model";
-import AppError from "../../../errors/AppError";
-import { createToken, createResetToken, verifyToken } from "../../../utils/auth.utils";
-import { sendEmail, buildResetCodeEmail } from "../../../utils/sendEmail";
-import config from "../../../../config";
+import AppError from "../../errors/AppError";
+import { createToken, createResetToken, verifyToken } from "../../utils/auth.utils";
+import { sendEmail, buildResetCodeEmail } from "../../utils/sendEmail";
+import config from "../../../config";
 import {
   TChangePassword,
   TLoginUser,

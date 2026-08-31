@@ -1,5 +1,5 @@
 import express from "express";
-import auth from "../../../middlewares/auth";
+import auth from "../../middlewares/auth";
 import { fieldController } from "./fields.controller";
 
 const router = express.Router();

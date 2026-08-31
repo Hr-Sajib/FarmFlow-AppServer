@@ -1,5 +1,5 @@
 import config from "../../config";
-import { UserModel } from "../modules/appData/user/user.model";
+import { UserModel } from "../modules/user/user.model";
 import { generateUserCode } from "./generateIds";
 
 /**

@@ -1,14 +1,14 @@
 // src/services/fields/fields.service.ts
 
 import { UserModel } from "../user/user.model";
-import AppError from "../../../errors/AppError";
+import AppError from "../../errors/AppError";
 import httpStatus from "http-status";
 import { IField } from "./fields.interface";
-import { generateFieldId } from "../../../utils/generateIds";
+import { generateFieldId } from "../../utils/generateIds";
 import { FieldModel } from "./fields.model";
 import { ClientSession } from "mongoose";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import config from "../../../../config";
+import config from "../../../config";
 import axios from "axios";
 import Groq from "groq-sdk";
 

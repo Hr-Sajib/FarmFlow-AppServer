@@ -3,11 +3,11 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 import globalErrorHandler from "./app/middlewares/globalErrorhandler";
-import { UserRoutes } from "./app/modules/appData/user/user.route";
-import { AuthRoutes } from "./app/modules/appData/auth/auth.route";
+import { UserRoutes } from "./app/modules/user/user.route";
+import { AuthRoutes } from "./app/modules/auth/auth.route";
 import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
-import { PostRoutes } from "./app/modules/appData/posts/post.route";
-import { FieldRoutes } from "./app/modules/appData/fields/fields.route";
+import { PostRoutes } from "./app/modules/posts/post.route";
+import { FieldRoutes } from "./app/modules/fields/fields.route";
 import { ChatRoutes } from "./app/modules/chat/chat.route";
 import { UploadRoutes } from "./app/modules/upload/upload.route";
 

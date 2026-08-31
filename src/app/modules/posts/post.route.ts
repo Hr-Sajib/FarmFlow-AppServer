@@ -1,7 +1,7 @@
 import express from "express";
-import auth from "../../../middlewares/auth";
+import auth from "../../middlewares/auth";
 import { generateStaticPdfController, postController } from "./post.controller";
-import validateRequest from "../../../middlewares/validateRequest";
+import validateRequest from "../../middlewares/validateRequest";
 import { PostValidation } from "./post.validation";
 
 const router = express.Router();
