@@ -10,6 +10,7 @@ import { PostRoutes } from "./app/modules/posts/post.route";
 import { FieldRoutes } from "./app/modules/fields/fields.route";
 import { ChatRoutes } from "./app/modules/chat/chat.route";
 import { UploadRoutes } from "./app/modules/upload/upload.route";
+import { AdvisorySessionRoutes } from "./app/modules/advisorySession/advisorySession.route";
 
 const app: Application = express();
 
@@ -40,6 +41,7 @@ app.use("/post", PostRoutes);
 app.use("/field", FieldRoutes);
 app.use("/chat", ChatRoutes);
 app.use("/upload", UploadRoutes);
+app.use("/advisory", AdvisorySessionRoutes);
 
 /**
  * =========================

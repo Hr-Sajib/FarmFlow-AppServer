@@ -27,6 +27,46 @@ const createAdvisorySessionValidationSchema = z.object({
     .strict(),
 });
 
+/** The farmer who opened the session may revise only the problem it describes. */
+const updateAdvisorySessionValidationSchema = z.object({
+  body: z
+    .object({
+      problemStatement: z
+        .string()
+        .trim()
+        .min(5, { message: "Problem statement must be at least 5 characters" })
+        .max(300, { message: "Problem statement cannot exceed 300 characters" })
+        .optional(),
+      problemDetails: z
+        .string()
+        .trim()
+        .max(5000, { message: "Problem details cannot exceed 5000 characters" })
+        .optional(),
+      attachedMediaUrls: z
+        .array(z.string().url({ message: "Each attachment must be a valid URL" }))
+        .max(10, { message: "At most 10 attachments" })
+        .optional(),
+    })
+    .strict()
+    .refine((body) => Object.keys(body).length > 0, {
+      message: "At least one field must be provided",
+    }),
+});
+
+/** Attaching a human expert to the session. */
+const assignExpertValidationSchema = z.object({
+  body: z
+    .object({
+      expertId: z
+        .string({ required_error: "expertId is required" })
+        .trim()
+        .regex(/^expert[0-9]{8}$/, {
+          message: 'Expert id must look like "expert12345678"',
+        }),
+    })
+    .strict(),
+});
+
 /**
  * Posting a message. `senderRole` and `senderId` are derived server-side from
  * the token so a farmer cannot post as an expert or impersonate the AI.
@@ -89,6 +129,8 @@ const updateStatusValidationSchema = z.object({
 
 export const AdvisorySessionValidation = {
   createAdvisorySessionValidationSchema,
+  updateAdvisorySessionValidationSchema,
+  assignExpertValidationSchema,
   postMessageValidationSchema,
   submitFeedbackValidationSchema,
   updateStatusValidationSchema,
