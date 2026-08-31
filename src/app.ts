@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import globalErrorHandler from "./app/middlewares/globalErrorhandler";
 import { UserRoutes } from "./app/modules/user/user.route";
 import { AuthRoutes } from "./app/modules/auth/auth.route";
-import sensorRoutes from "./app/modules/sensorData/sensorData.routes";
+import { SensorDataRoutes } from "./app/modules/sensorData/sensorData.route";
 import { PostRoutes } from "./app/modules/posts/post.route";
 import { FieldRoutes } from "./app/modules/fields/fields.route";
 import { UploadRoutes } from "./app/modules/upload/upload.route";
@@ -35,7 +35,7 @@ app.use(cookieParser());
  */
 app.use("/user", UserRoutes);
 app.use("/auth", AuthRoutes);
-app.use("/sensorData", sensorRoutes);
+app.use("/sensorData", SensorDataRoutes);
 app.use("/post", PostRoutes);
 app.use("/field", FieldRoutes);
 app.use("/upload", UploadRoutes);

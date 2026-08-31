@@ -2,19 +2,11 @@ import express from "express";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import mongoose from "mongoose";
-import { InfluxDB } from "@influxdata/influxdb-client";
-import { OrgsAPI } from "@influxdata/influxdb-client-apis";
 import app from "./app";
 import config from "./config";
 import { setupAdvisorySocket } from "./app/modules/advisorySession/advisorySession.socket";
 import { initializeMqttClient } from "./app/modules/sensorData/mqtt.service";
 import { seedAdmin } from "./app/utils/seedAdmin";
-
-// Initialize InfluxDB client
-export const influxClient = new InfluxDB({
-  url: config.influxDB_url as string,
-  token: config.influxDB_token as string,
-});
 
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer, {
@@ -35,10 +27,6 @@ async function main() {
     }
 
     await seedAdmin();
-
-    const orgsApi = new OrgsAPI(influxClient);
-    await orgsApi.getOrgs({ org: config.influxDB_org as string });
-    console.log("InfluxDB Database connected..");
 
     // Initialize MQTT client
     initializeMqttClient();

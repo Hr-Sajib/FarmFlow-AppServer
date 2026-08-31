@@ -1,17 +1,34 @@
 import { z } from "zod";
 
-const SensorDataValidationSchema = z.object({
-  body: z.object({
-    farmerId: z.string().min(1, { message: 'Farmer ID is required' }),
-    fieldId: z.string().min(1, { message: 'Field ID is required' }),
-    temperature: z.number().min(-50).max(150),
-    humidity: z.number().min(0).max(100),
-    soil_moisture: z.number().min(0).max(100),
-    light_intensity: z.number().min(0).max(100000),
-    timeStamp: z.string() // Accept a string
-      .transform((val) => new Date(val)) // Transform it to a Date object
-      .refine((date) => !isNaN(date.getTime()), { message: 'Invalid timestamp format' }) // Validate it’s a valid date
-  })
+const RANGES = ["1h", "24h", "7d", "30d", "90d"] as const;
+
+export const rangeQuerySchema = z.enum(RANGES).default("24h");
+
+/**
+ * Direct ingest over HTTP. The live path is the MQTT subscriber; this exists
+ * for seeding and testing, which is why the route is admin-only.
+ */
+const createTelemetryValidationSchema = z.object({
+  body: z
+    .object({
+      farmerId: z.string().trim().min(1, { message: "farmerId is required" }),
+      fieldId: z.string().trim().min(1, { message: "fieldId is required" }),
+      deviceId: z.string().trim().optional(),
+      temperature: z.number().min(-50).max(150).optional(),
+      humidity: z.number().min(0).max(100).optional(),
+      soil_moisture: z.number().min(0).max(100).optional(),
+      light_intensity: z.number().min(0).max(200000).optional(),
+      timeStamp: z
+        .string()
+        .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+          message: "Invalid timestamp format",
+        })
+        .optional(),
+    })
+    .strict(),
 });
 
-export const sensorDataValidations = { SensorDataValidationSchema };
+export const sensorDataValidations = {
+  createTelemetryValidationSchema,
+  rangeQuerySchema,
+};

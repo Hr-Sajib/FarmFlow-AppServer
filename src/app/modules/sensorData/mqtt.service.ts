@@ -1,59 +1,39 @@
-// mqtt.service.ts 
+import mqtt, { MqttClient, IClientOptions } from "mqtt";
 
-import mqtt, { MqttClient, IClientOptions } from 'mqtt';
-import { insertDataToInfluxDB } from './sensorData.service';
-import config from '../../../config';
+import config from "../../../config";
+import { sensorDataServices } from "./sensorData.service";
+import { toTelemetry } from "./sensorData.utils";
 
-// Interface for topic configuration
-interface TopicConfig {
-  topic: string;
-  measurement: string;
-  parser: (message: string) => any; // Function to parse message into data
-}
-
-// MQTT topic configurations
-const topicConfigs: TopicConfig[] = [
-  {
-    topic: 'topic_farmer1',
-    measurement: 'ms_farmer1',
-    parser: (message: string) => {
-      const cleanedMessage = message.replace(/'/g, '"'); // Fix single quotes
-      return JSON.parse(cleanedMessage);
-    },
-  },
-  {
-    topic: 'topic_farmer2',
-    measurement: 'ms_farmer2',
-    parser: (message: string) => {
-      const cleanedMessage = message.replace(/'/g, '"');
-      return JSON.parse(cleanedMessage);
-    },
-  },
+/**
+ * Topics carry no meaning any more — identity comes from farmerId/fieldId in
+ * the payload. That removes the per-farmer topic/measurement mapping this file
+ * used to hold, which could not scale past hardcoded farmers, and lets the real
+ * firmware topic be subscribed alongside the simulator's.
+ */
+const SUBSCRIBED_TOPICS = [
+  "sensors/data", // published by the ESP32 firmware
+  "topic_farmer1", // published by the Python simulator
+  "topic_farmer2",
 ];
 
-// Singleton MQTT client instance
 let mqttClient: MqttClient | null = null;
 
-// Initialize MQTT client and subscribe to configured topics
-export const initializeMqttClient = (): void => {
-  if (mqttClient) {
-    console.log('MQTT client already initialized');
-    return;
-  }
+/**
+ * The simulator publishes Python dict repr, which uses single quotes and is not
+ * valid JSON. Firmware publishes proper JSON, so this only normalises the
+ * former.
+ */
+const parsePayload = (raw: string): Record<string, unknown> =>
+  JSON.parse(raw.replace(/'/g, '"'));
 
-  console.log('Initializing MQTT client with config:', {
-    broker: config.mqtt_broker,
-    port: config.mqtt_port,
-    topics: topicConfigs.map((t) => t.topic),
-    username: config.mqtt_username ? '****' : undefined,
-    password: config.mqtt_password ? '****' : undefined,
-  });
+export const initializeMqttClient = (): void => {
+  if (mqttClient) return;
 
   const options: IClientOptions = {
     port: config.mqtt_port,
     username: config.mqtt_username,
     password: config.mqtt_password,
-    protocol: 'mqtts',
+    protocol: "mqtts",
     rejectUnauthorized: true,
     keepalive: 60,
     reconnectPeriod: 1000,
@@ -62,72 +42,47 @@ export const initializeMqttClient = (): void => {
 
   try {
     mqttClient = mqtt.connect(config.mqtt_broker as string, options);
-    console.log('MQTT client connection initiated');
   } catch (error) {
-    console.error('Failed to initiate MQTT client:', error);
+    console.error("MQTT: failed to initiate client:", error);
     mqttClient = null;
     return;
   }
 
-  mqttClient.on('connect', () => {
-    console.log('Connected to MQTT broker');
-    topicConfigs.forEach(({ topic }) => {
-      mqttClient!.subscribe(topic, { qos: 1 }, (err) => {
-        if (!err) {
-          console.log(`Subscribed to topic: ${topic}`);
-        } else {
-          console.error(`Failed to subscribe to topic: ${topic}`, err);
-        }
-      });
+  mqttClient.on("connect", () => {
+    console.log("MQTT: connected to broker");
+    mqttClient!.subscribe(SUBSCRIBED_TOPICS, { qos: 1 }, (err) => {
+      if (err) console.error("MQTT: subscribe failed", err);
+      else console.log(`MQTT: subscribed to ${SUBSCRIBED_TOPICS.join(", ")}`);
     });
   });
 
-  mqttClient.on('message', async (topic, message) => {
+  mqttClient.on("message", async (topic, raw) => {
     try {
-      const messageString = message.toString();
-      // console.log(`Received message on topic '${topic}': ${messageString}`);
+      const payload = parsePayload(raw.toString());
+      const entry = toTelemetry(payload);
 
-      // Find the topic configuration
-      const topicConfig = topicConfigs.find((config) => config.topic === topic);
-      if (!topicConfig) {
-        console.error(`No configuration found for topic: ${topic}`);
+      if (!entry.meta.farmerId || !entry.meta.fieldId) {
+        console.warn(`MQTT: dropping message on ${topic} with no farmerId/fieldId`);
         return;
       }
 
-      // Parse the message
-      let data: any;
-      try {
-        data = topicConfig.parser(messageString);
-      } catch (parseError) {
-        console.error(`Failed to parse message for topic ${topic}:`, parseError, 'Raw message:', messageString);
-        return;
-      }
-
-      // Log parsed data
-      // console.log(`Parsed data for topic ${topic}:`, data);
-
-      // Insert data into InfluxDB
-      await insertDataToInfluxDB(topicConfig.measurement, data);
-      console.log(`Data inserted successfully for topic ${topic} into measurement ${topicConfig.measurement}:`, data);
+      await sensorDataServices.createTelemetryIntoDB(entry);
     } catch (error) {
-      console.error(`Error processing message for topic ${topic}:`, error);
+      // A malformed message from one device must not stop the subscriber.
+      console.error(
+        `MQTT: failed to store message from ${topic}:`,
+        error instanceof Error ? error.message : error
+      );
     }
   });
 
-  mqttClient.on('error', (err) => {
-    console.error('MQTT client error:', err);
-    mqttClient = null;
+  mqttClient.on("error", (err) => {
+    console.error("MQTT: client error:", err.message);
   });
 
-  mqttClient.on('close', () => {
-    console.log('Disconnected from MQTT broker');
-    mqttClient = null;
-  });
-
-  mqttClient.on('reconnect', () => {
-    console.log('Attempting to reconnect to MQTT broker');
+  mqttClient.on("close", () => {
+    console.log("MQTT: disconnected from broker");
   });
 };
 
-// Get the current MQTT client instance (for testing or manual interaction)
 export const getMqttClient = (): MqttClient | null => mqttClient;

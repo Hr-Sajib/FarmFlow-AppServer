@@ -1,69 +1,101 @@
+import { Request, Response } from "express";
+import httpStatus from "http-status";
 
-// sensorData.controller.ts 
-import { Request, Response } from 'express';
-import { fetchAllSensorData, insertSensorData } from './sensorData.service';
-import { ISensorData } from './sensorData.interface';
-import { initializeMqttClient } from './mqtt.service';
-import catchAsync from '../../utils/catchAsync';
-import sendResponse from '../../utils/sendResponse';
-import httpStatus from 'http-status';
-import AppError from '../../errors/AppError';
+import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
+import { sensorDataServices } from "./sensorData.service";
+import { sensorDataValidations } from "./sensorData.validation";
+import { TActor, assertCanReadField, toTelemetry } from "./sensorData.utils";
 
-// Initialize MQTT client on module load
-initializeMqttClient();
+const actorOf = (req: Request): TActor => ({
+  userId: req.user.userId,
+  role: req.user.role,
+  userCode: req.user.userCode,
+});
 
-// Insert a new sensor data point (HTTP handler)
-export const insertSensorDataPoint = catchAsync(
-  async (req: Request, res: Response) => {
-    const sensorData = req.body as ISensorData;
-    await insertSensorData(sensorData);
+const parseRange = (req: Request) =>
+  sensorDataValidations.rangeQuerySchema.parse(req.query.range);
 
-    sendResponse(res, {
-      statusCode: 201,
-      success: true,
-      message: 'Sensor data inserted successfully',
-      data: sensorData,
-    });
-  }
-);
+const createTelemetry = catchAsync(async (req: Request, res: Response) => {
+  const entry = await sensorDataServices.createTelemetryIntoDB(
+    toTelemetry(req.body)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Telemetry recorded successfully",
+    data: entry,
+  });
+});
 
-// Fetch all sensor data, optionally filtered by farmerId, fieldId, time=latest, and measurement
-export const getAllSensorData = catchAsync(
-  async (req: Request, res: Response) => {
-    const { farmerId, fieldId, time, ms } = req.query;
+const getEntriesByField = catchAsync(async (req: Request, res: Response) => {
+  const { fieldId } = req.params;
+  await assertCanReadField(fieldId, actorOf(req));
 
-    // Validate that both farmerId and fieldId are provided together
-    if ((farmerId && !fieldId) || (!farmerId && fieldId)) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Both farmerId and fieldId must be provided together');
-    }
+  const data = await sensorDataServices.getEntriesByFieldIdFromDB(
+    fieldId,
+    parseRange(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Telemetry retrieved successfully",
+    data,
+  });
+});
 
-    // Validate time parameter
-    if (time && time !== 'latest') {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid time parameter. Only "latest" is supported');
-    }
+const getRecentEntriesByField = catchAsync(async (req: Request, res: Response) => {
+  const { fieldId } = req.params;
+  await assertCanReadField(fieldId, actorOf(req));
 
-    // Validate measurement parameter
-    if (ms && (typeof ms !== 'string' || !ms.trim())) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid measurement parameter. Must be a non-empty string');
-    }
+  const limit = Math.min(Number(req.query.limit) || 50, 500);
+  const data = await sensorDataServices.getRecentEntriesByFieldIdFromDB(
+    fieldId,
+    limit
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Recent telemetry retrieved successfully",
+    data,
+  });
+});
 
-    const sensorData = await fetchAllSensorData(
-      farmerId as string | undefined,
-      fieldId as string | undefined,
-      time === 'latest',
-      ms as string | undefined
-    );
+const getLatestByField = catchAsync(async (req: Request, res: Response) => {
+  const { fieldId } = req.params;
+  await assertCanReadField(fieldId, actorOf(req));
 
-    const measurement = ms || 'sensor_reading';
-    const message = farmerId && fieldId
-      ? `Sensor data fetched successfully from ${measurement} for farmerId=${farmerId}, fieldId=${fieldId}${time === 'latest' ? ' (latest)' : ''}`
-      : `Sensor data fetched successfully from ${measurement}${time === 'latest' ? ' (latest)' : ''}`;
+  const data = await sensorDataServices.getLatestByFieldIdFromDB(fieldId);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: data
+      ? "Latest reading retrieved successfully"
+      : "No readings recorded for this field yet",
+    data,
+  });
+});
 
-    sendResponse(res, {
-      statusCode: 200,
-      success: true,
-      message,
-      data: sensorData,
-    });
-  }
-);
+const getAggregatedSeries = catchAsync(async (req: Request, res: Response) => {
+  const { fieldId } = req.params;
+  await assertCanReadField(fieldId, actorOf(req));
+
+  const data = await sensorDataServices.getAggregatedSeriesFromDB(
+    fieldId,
+    parseRange(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Telemetry series retrieved successfully",
+    data,
+  });
+});
+
+export const sensorDataController = {
+  createTelemetry,
+  getEntriesByField,
+  getRecentEntriesByField,
+  getLatestByField,
+  getAggregatedSeries,
+};

@@ -9,10 +9,6 @@ declare namespace NodeJS {
     JWT_REFRESH_SECRET: string;
     JWT_ACCESS_EXPIRES_IN: string;
     JWT_REFRESH_EXPIRES_IN: string;
-    INFLUXDB_URL: string;
-    INFLUXDB_TOKEN: string;
-    INFLUXDB_ORG: string;
-    INFLUXDB_BUCKET: string;
     OPENROUTER_API_KEY?: string;
     OPENROUTER_BASE_URL?: string;
     OPENROUTER_MODEL?: string;
