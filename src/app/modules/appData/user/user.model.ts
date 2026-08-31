@@ -1,31 +1,61 @@
 import { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
 import config from "../../../../config/index";
-import { IUser } from "./user.interface";
+import { IDesignation, IUser } from "./user.interface";
 
-// Define the User schema
+const designationSchema = new Schema<IDesignation>(
+  {
+    designationTitle: {
+      type: String,
+      trim: true,
+      required: [true, "Designation title is required"],
+    },
+    designatedFrom: {
+      type: String,
+      trim: true,
+      required: [true, "Designating institution is required"],
+    },
+    documents: [{ type: String, trim: true }],
+    isApproved: { type: Boolean, default: false },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    reviewedAt: { type: Date },
+  },
+  { _id: true, timestamps: true }
+);
+
 const userSchema = new Schema<IUser>(
   {
-    name: { type: String, trim: true, required: [true, "Name is required"] },
-    farmerId: { type: String, trim: true, required: [true, "Farmer ID is required"] },
-    email: { type: String, lowercase: true, trim: true },
+    fullName: {
+      type: String,
+      trim: true,
+      required: [true, "Full name is required"],
+    },
     phone: {
       type: String,
       trim: true,
       required: [true, "Phone number is required"],
-      unique: [true, "Phone number is already in use, please provide a unique number!"],
+      unique: true,
     },
-    password: { type: String, required: [true, "Password is required"], select: false },
-    photo: { type: String ,trim: true},
-    address: { type: String, trim: true, required: [true, "Address is required"] },
-    passwordChangedAt: { type: Date, default: null },
+    email: { type: String, lowercase: true, trim: true },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      select: false,
+    },
+    address: {
+      type: String,
+      trim: true,
+      required: [true, "Address is required"],
+    },
+    photo: { type: String, trim: true },
+
     role: {
       type: String,
       enum: {
-        values: ["admin", "farmer"],
-        message: "Role must be either 'admin' or 'farmer'",
+        values: ["admin", "farmer", "expert"],
+        message: "Role must be one of: admin, farmer, expert",
       },
-      default:"farmer",
+      default: "farmer",
     },
     status: {
       type: String,
@@ -35,15 +65,33 @@ const userSchema = new Schema<IUser>(
       },
       default: "active",
     },
-    fieldIds: [{ type: Schema.Types.ObjectId, ref: "Field" }],
+
+    userCode: {
+      type: String,
+      trim: true,
+      required: [true, "User code is required"],
+      unique: true,
+    },
+
+    passwordChangedAt: { type: Date, default: null },
+
+    designations: { type: [designationSchema], default: undefined },
+    expertStatus: {
+      type: String,
+      enum: {
+        values: ["pending", "verified", "rejected"],
+        message: "Expert status must be one of: pending, verified, rejected",
+      },
+    },
+
     isDeleted: { type: Boolean, default: false },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-// Password hashing middleware
+// Most listings filter out soft-deleted users and scope by role.
+userSchema.index({ role: 1, isDeleted: 1 });
+
 userSchema.pre("save", async function (next) {
   const user = this;
   if (user.isModified("password")) {
@@ -55,5 +103,4 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// Export the Mongoose model
 export const UserModel = model<IUser>("User", userSchema);

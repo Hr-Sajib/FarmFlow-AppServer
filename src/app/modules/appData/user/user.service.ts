@@ -3,13 +3,14 @@ import { IUser } from "./user.interface";
 import { UserModel } from "./user.model";
 import httpStatus from "http-status";
 import bcrypt from "bcrypt";
-import { generateFarmerId } from "../../../utils/generateIds";
+import { generateUserCode } from "../../../utils/generateIds";
 import config from "../../../../config";
 
 // Create a new user in the database
 const createUserIntoDB = async (payload: IUser) => {
-  const farmerId = await generateFarmerId();
-  const insertingData = { ...payload, farmerId };
+  const role = payload.role ?? "farmer";
+  const userCode = await generateUserCode(role);
+  const insertingData = { ...payload, role, userCode };
 
   const newUser = await UserModel.create(insertingData);
   if (!newUser) {
@@ -82,7 +83,7 @@ const updateUserData = async (role:string,userId: string, userPhone: string, upd
 
   // Prepare update object for $set
   const updateFields: Partial<IUser> = {};
-  if (updates.name) updateFields.name = updates.name;
+  if (updates.fullName) updateFields.fullName = updates.fullName;
   if (updates.email) updateFields.email = updates.email;
   if (updates.address) updateFields.address = updates.address;
   if (updates.photo) updateFields.photo = updates.photo;

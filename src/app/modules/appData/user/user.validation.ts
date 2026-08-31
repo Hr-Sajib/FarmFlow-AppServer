@@ -1,181 +1,141 @@
 import { z } from "zod";
 
+const phoneSchema = z
+  .string({
+    invalid_type_error: "Phone number must be a string",
+    required_error: "Phone number is required",
+  })
+  .trim()
+  .length(11, { message: "Phone number must be exactly 11 digits" })
+  .regex(/^01[0-9]{9}$/, {
+    message: 'Phone number must start with "01" and be 11 digits',
+  });
+
+// Min 6 keeps the previous floor. The old max of 10 was raised: capping
+// passwords low blocks password managers and long passphrases for no benefit.
+const passwordSchema = z
+  .string({
+    invalid_type_error: "Password must be a string",
+    required_error: "Password is required",
+  })
+  .min(6, { message: "Password must be at least 6 characters" })
+  .max(128, { message: "Password cannot exceed 128 characters" });
+
+const designationSchema = z
+  .object({
+    designationTitle: z
+      .string({ required_error: "Designation title is required" })
+      .trim()
+      .min(1, { message: "Designation title cannot be empty" }),
+    designatedFrom: z
+      .string({ required_error: "Designating institution is required" })
+      .trim()
+      .min(1, { message: "Designating institution cannot be empty" }),
+    documents: z
+      .array(z.string().url({ message: "Each document must be a valid URL" }))
+      .default([]),
+  })
+  .strict();
+
+/**
+ * Registration payload. `userCode`, `role`, `status` and `expertStatus` are
+ * deliberately NOT accepted from the client — they are assigned server-side.
+ * `.strict()` rejects them outright rather than silently dropping them,
+ * which is what closes the mass-assignment hole.
+ */
 const createUserValidationSchema = z.object({
-  body: z.object({
-    name: z
-      .string({
-        invalid_type_error: "Name must be a string",
-        required_error: "Name is required",
-      })
-      .trim()
-      .min(1, { message: "Name cannot be empty" }),
-    address: z
-      .string({
-        invalid_type_error: "Address must be a string",
-        required_error: "Address is required",
-      })
-      .trim()
-      .min(1, { message: "Address cannot be empty" }),
-    farmerId: z
-      .string({
-        invalid_type_error: "Farmer ID must be a string",
-        required_error: "Farmer ID is required",
-      })
-      .trim()
-      .min(1, { message: "Farmer ID cannot be empty" })
-      .regex(/^fr[0-9]+$/, {
-        message: 'Farmer ID must start with "fr" followed by numbers',
-      }),
-    email: z
-      .string({
-        invalid_type_error: "Email must be a string",
-      })
-      .email({ message: "Invalid email format" })
-      .trim()
-      .toLowerCase()
-      .optional(),
-    phone: z
-      .string({
-        invalid_type_error: "Phone number must be a string",
-        required_error: "Phone number is required",
-      })
-      .trim()
-      .length(11, { message: "Phone number must be exactly 11 digits" })
-      .regex(/^01[0-9]{9}$/, {
-        message: 'Phone number must start with "01" and be 11 digits',
-      }),
-    password: z
-      .string({
-        invalid_type_error: "Password must be a string",
-        required_error: "Password is required",
-      })
-      .min(6, { message: "Password must be at least 6 characters" })
-      .max(10, { message: "Password cannot exceed 10 characters" }),
-    passwordChangedAt: z
-      .date({
-        invalid_type_error: "Password changed date must be a valid date",
-      })
-      .optional(),
-    role: z
-      .string({
-        invalid_type_error: "Role must be a string",
-        required_error: "Role is required",
-      })
-      .refine((val) => ["admin", "farmer"].includes(val), {
-        message: 'Role must be either "admin" or "farmer"',
-      }),
-    status: z
-      .string({
-        invalid_type_error: "Status must be a string",
-        required_error: "Status is required",
-      })
-      .refine((val) => ["blocked", "active"].includes(val), {
-        message: 'Status must be either "blocked" or "active"',
-      })
-      .default("active"),
-    fieldIds: z
-      .array(
-        z
-          .string({
-            invalid_type_error: "Field ID must be a string",
-            required_error: "Field ID is required",
-          })
-          .regex(/^fd[0-9]+$/, {
-            message: 'Field ID must start with "fd" followed by numbers',
-          }),
-        { required_error: "Field IDs array is required" }
-      )
-      .optional(),
-  }).strict(),
+  body: z
+    .object({
+      fullName: z
+        .string({
+          invalid_type_error: "Full name must be a string",
+          required_error: "Full name is required",
+        })
+        .trim()
+        .min(1, { message: "Full name cannot be empty" }),
+      phone: phoneSchema,
+      email: z
+        .string({ invalid_type_error: "Email must be a string" })
+        .email({ message: "Invalid email format" })
+        .trim()
+        .toLowerCase()
+        .optional(),
+      password: passwordSchema,
+      address: z
+        .string({
+          invalid_type_error: "Address must be a string",
+          required_error: "Address is required",
+        })
+        .trim()
+        .min(1, { message: "Address cannot be empty" }),
+      photo: z
+        .string()
+        .url({ message: "Photo must be a valid URL" })
+        .trim()
+        .optional(),
+      designations: z.array(designationSchema).optional(),
+    })
+    .strict(),
 });
 
+/**
+ * Self-service profile update. Role, status, userCode and expertStatus are
+ * excluded — privilege changes belong on dedicated admin routes so they can
+ * carry their own authorization.
+ */
 const updateUserValidationSchema = z.object({
-  body: z.object({
-    name: z
-      .string({
-        invalid_type_error: "Name must be a string",
-      })
-      .trim()
-      .min(1, { message: "Name cannot be empty" })
-      .optional(),
-    address: z
-      .string({
-        invalid_type_error: "Address must be a string",
-      })
-      .trim()
-      .min(1, { message: "Address cannot be empty" })
-      .optional(),
-    farmerId: z
-      .string({
-        invalid_type_error: "Farmer ID must be a string",
-      })
-      .trim()
-      .min(1, { message: "Farmer ID cannot be empty" })
-      .regex(/^fr[0-9]+$/, {
-        message: 'Farmer ID must start with "fr" followed by numbers',
-      })
-      .optional(),
-    email: z
-      .string({
-        invalid_type_error: "Email must be a string",
-      })
-      .email({ message: "Invalid email format" })
-      .trim()
-      .toLowerCase()
-      .optional(),
-    phone: z
-      .string({
-        invalid_type_error: "Phone number must be a string",
-      })
-      .trim()
-      .length(11, { message: "Phone number must be exactly 11 digits" })
-      .regex(/^01[0-9]{9}$/, {
-        message: 'Phone number must start with "01" and be 11 digits',
-      })
-      .optional(),
-    password: z
-      .string({
-        invalid_type_error: "Password must be a string",
-      })
-      .min(6, { message: "Password must be at least 6 characters" })
-      .max(10, { message: "Password cannot exceed 10 characters" })
-      .optional(),
-    passwordChangedAt: z
-      .date({
-        invalid_type_error: "Password changed date must be a valid date",
-      })
-      .optional(),
-    role: z
-      .string({
-        invalid_type_error: "Role must be a string",
-      })
-      .refine((val) => ["admin", "farmer"].includes(val), {
-        message: 'Role must be either "admin" or "farmer"',
-      })
-      .optional(),
-    status: z
-      .string({
-        invalid_type_error: "Status must be a string",
-      })
-      .refine((val) => ["blocked", "active"].includes(val), {
-        message: 'Status must be either "blocked" or "active"',
-      })
-      .optional(),
-    fieldIds: z
-      .array(
-        z
-          .string({
-            invalid_type_error: "Field ID must be a string",
-          })
-          .regex(/^fd[0-9]+$/, {
-            message: 'Field ID must start with "fd" followed by numbers',
-          })
-      )
-      .optional(),
-  }).strict(),
+  body: z
+    .object({
+      fullName: z.string().trim().min(1).optional(),
+      email: z
+        .string()
+        .email({ message: "Invalid email format" })
+        .trim()
+        .toLowerCase()
+        .optional(),
+      address: z.string().trim().min(1).optional(),
+      photo: z.string().url({ message: "Photo must be a valid URL" }).trim().optional(),
+      phone: phoneSchema.optional(),
+    })
+    .strict(),
+});
+
+const changePasswordValidationSchema = z.object({
+  body: z
+    .object({
+      oldPassword: z.string({ required_error: "Old password is required" }),
+      newPassword: passwordSchema,
+    })
+    .strict(),
+});
+
+/** Admin-only: block or unblock a user. */
+const changeUserStatusValidationSchema = z.object({
+  body: z
+    .object({
+      status: z.enum(["active", "blocked"], {
+        errorMap: () => ({ message: "Status must be either 'active' or 'blocked'" }),
+      }),
+    })
+    .strict(),
+});
+
+/** Admin-only: approve or reject one claimed designation. */
+const reviewDesignationValidationSchema = z.object({
+  body: z
+    .object({
+      designationId: z
+        .string({ required_error: "Designation id is required" })
+        .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid designation id" }),
+      isApproved: z.boolean({ required_error: "isApproved is required" }),
+    })
+    .strict(),
 });
 
 export const UserValidation = {
   createUserValidationSchema,
   updateUserValidationSchema,
+  changePasswordValidationSchema,
+  changeUserStatusValidationSchema,
+  reviewDesignationValidationSchema,
 };

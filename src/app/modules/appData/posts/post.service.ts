@@ -12,12 +12,12 @@ const createPost = async (postData: IPost, userPhone: string) => {
   }
 
   const post = {
-    creatorName: user.name,
-    creatorPhoto: user.photo,
     creatorId: user._id,
+    creatorRole: user.role,
     postText: postData.postText,
     postImage: postData.postImage,
-    postTopics: postData.postTopics
+    postTopics: postData.postTopics,
+    region: postData.region,
   }
 
 
@@ -88,8 +88,8 @@ const addComment = async (postId: string,userPhone: string, commentData:TComment
   }
 
   const commentInput = {
-    commenterName: user.name,
     commenterId: user._id,
+    commenterRole: user.role,
     commentText: commentData.commentText,
   }
 
@@ -246,15 +246,15 @@ const removeDislikeFromPost = async (postId: string, userPhone: string) => {
 
 const getAllPostsFromDB = async () => {
   const posts = await PostModel.find()
-    .populate("creatorId", "name phone role")
-    .populate("comments.commenterId", "name phone role");
+    .populate("creatorId", "fullName photo role")
+    .populate("comments.commenterId", "fullName photo role");
   return posts;
 };
 
 const getPostByIdFromDB = async (postId: string) => {
   const post = await PostModel.findById(postId)
-    .populate("creatorId", "name phone role")
-    .populate("comments.commenterId", "name phone role");
+    .populate("creatorId", "fullName photo role")
+    .populate("comments.commenterId", "fullName photo role");
   return post;
 };
 

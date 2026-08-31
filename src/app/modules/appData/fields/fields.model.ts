@@ -1,6 +1,5 @@
 import { Schema, Types, model } from "mongoose";
 import { IField } from "./fields.interface";
-import { boolean } from "zod";
 
 // Define the Field Location sub-schema
 const fieldLocationSchema = new Schema<IField["fieldLocation"]>(
@@ -60,10 +59,22 @@ const fieldSchema = new Schema<IField>(
         message: "Soil type must be one of: clay, loam, sandy, silt, peat, chalk, saline",
       },
     },
+    environmentType: {
+      type: String,
+      enum: {
+        values: ["open_field", "greenhouse", "net_house"],
+        message: "Environment type must be one of: open_field, greenhouse, net_house",
+      },
+      default: "greenhouse",
+    },
     farmerId: {
       type: String,
       required: [true, "Farmer ID is required"],
       ref: "User",
+      trim: true,
+    },
+    deviceId: {
+      type: String,
       trim: true,
     },
     region: {
@@ -78,11 +89,15 @@ const fieldSchema = new Schema<IField>(
       },
       default: "active",
     },
-    motorOn:{
-      type: Schema.Types.Boolean,
+    // Desired state only — the device does not acknowledge commands, so these
+    // record what was asked for, not what the hardware is actually doing.
+    motorOn: {
+      type: Boolean,
+      default: false,
     },
-    shadeOn:{
-      type: Schema.Types.Boolean,
+    shadeOn: {
+      type: Boolean,
+      default: false,
     },
     createdAt: {
       type: Date,

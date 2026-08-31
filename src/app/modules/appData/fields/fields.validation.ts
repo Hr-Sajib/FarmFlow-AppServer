@@ -42,6 +42,16 @@ const createFieldValidationSchema = z.object({
       .trim()
       .min(1, "Region cannot be empty")
       .optional(),
+    environmentType: z
+      .enum(["open_field", "greenhouse", "net_house"], {
+        errorMap: () => ({ message: "Environment type must be one of: open_field, greenhouse, net_house" }),
+      })
+      .default("greenhouse"),
+    deviceId: z
+      .string({ invalid_type_error: "Device ID must be a string" })
+      .trim()
+      .min(1, "Device ID cannot be empty")
+      .optional(),
     fieldStatus: z
       .enum(["active", "inactive", "maintenance"], {
         errorMap: () => ({ message: "Field status must be one of: active, inactive, maintenance" }),
@@ -53,14 +63,6 @@ const createFieldValidationSchema = z.object({
 // Define the update field validation schema
 const updateFieldValidationSchema = z.object({
   body: z.object({
-    fieldId: z
-      .string({ invalid_type_error: "Field ID must be a string" })
-      .trim()
-      .min(1, "Field ID cannot be empty")
-      .regex(/^fd[0-9]+$/, {
-        message: 'Farmer ID must start with "fr" followed by numbers',
-      })
-      .optional(),
     fieldName: z
       .string({ invalid_type_error: "Field name must be a string" })
       .trim()
@@ -90,8 +92,8 @@ const updateFieldValidationSchema = z.object({
       .string({ invalid_type_error: "Farmer ID must be a string" })
       .trim()
       .min(1, "Farmer ID cannot be empty")
-      .regex(/^fr[0-9]+$/, {
-        message: 'Farmer ID must start with "fr" followed by numbers',
+      .regex(/^farmer[0-9]{8}$/, {
+        message: 'Farmer ID must look like "farmer12345678"',
       })
       .optional(),
     region: z
@@ -104,6 +106,19 @@ const updateFieldValidationSchema = z.object({
         errorMap: () => ({ message: "Field status must be one of: active, inactive, maintenance" }),
       })
       .optional(),
+    environmentType: z
+      .enum(["open_field", "greenhouse", "net_house"], {
+        errorMap: () => ({ message: "Environment type must be one of: open_field, greenhouse, net_house" }),
+      })
+      .optional(),
+    deviceId: z
+      .string({ invalid_type_error: "Device ID must be a string" })
+      .trim()
+      .optional(),
+    // Desired actuator state. Previously absent, which would have rejected
+    // every toggle the moment this schema was wired to the route.
+    motorOn: z.boolean({ invalid_type_error: "motorOn must be a boolean" }).optional(),
+    shadeOn: z.boolean({ invalid_type_error: "shadeOn must be a boolean" }).optional(),
   }).strict(),
 });
 

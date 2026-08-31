@@ -25,7 +25,7 @@ const addField = async (fieldData: IField, userPhone: string, role: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
 
-  fieldData.farmerId = user.farmerId;
+  fieldData.farmerId = user.userCode;
   fieldData.fieldId = await generateFieldId();
 
   const existingField = await FieldModel.findOne({ fieldId: fieldData.fieldId });
@@ -48,7 +48,7 @@ const addField = async (fieldData: IField, userPhone: string, role: string) => {
       { new: true, session }
     );
 
-    if (role !== "admin" && fieldData.farmerId !== user.farmerId) {
+    if (role !== "admin" && fieldData.farmerId !== user.userCode) {
       throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only add to your own fields!");
     }
     if (!updatedUser) {
@@ -76,7 +76,7 @@ const removeField = async (fieldId: string, userPhone: string, role: string) => 
     throw new AppError(httpStatus.NOT_FOUND, "Field not found!");
   }
 
-  if (role !== "admin" && field.farmerId !== user.farmerId) {
+  if (role !== "admin" && field.farmerId !== user.userCode) {
     throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only delete your own fields!");
   }
 
@@ -125,7 +125,7 @@ const updateField = async (fieldId: string, fieldData: Partial<IField>, userPhon
     throw new AppError(httpStatus.NOT_FOUND, "Field not found!");
   }
 
-  if (role !== "admin" && field.farmerId !== user.farmerId) {
+  if (role !== "admin" && field.farmerId !== user.userCode) {
     throw new AppError(httpStatus.UNAUTHORIZED, "Unauthorized: You can only update your own fields!");
   }
 
@@ -176,7 +176,7 @@ const readMyFieldsFromDB = async (userPhone: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "User not found!");
   }
 
-  const targetFarmerId = user.farmerId;
+  const targetFarmerId = user.userCode;
 
   const fields = await FieldModel.find({ farmerId: targetFarmerId });
   return fields;
