@@ -4,6 +4,7 @@ import config from "../../../config";
 import { sensorDataServices } from "./sensorData.service";
 import { toTelemetry } from "./sensorData.utils";
 import { broadcastTelemetry } from "../../socket/telemetrySocket";
+import { resolveIdentity } from "./deviceRegistry";
 
 /**
  * Topics carry no meaning any more — identity comes from farmerId/fieldId in
@@ -66,6 +67,19 @@ export const initializeMqttClient = (): void => {
         console.warn(`MQTT: dropping message on ${topic} with no farmerId/fieldId`);
         return;
       }
+
+      // The firmware publishes hardware labels, not application ids. Resolve
+      // them to the field that claims the device, and drop anything unclaimed
+      // so readings never pile up under an id no field points at.
+      const identity = await resolveIdentity(entry.meta.fieldId);
+      if (!identity) {
+        console.warn(
+          `MQTT: dropping message on ${topic} — no field claims device "${entry.meta.fieldId}"`
+        );
+        return;
+      }
+
+      entry.meta = { ...entry.meta, ...identity };
 
       await sensorDataServices.createTelemetryIntoDB(entry);
 

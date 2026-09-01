@@ -20,6 +20,21 @@ const loginValidationSchema = z.object({
     .strict(),
 });
 
+/**
+ * The caller picks a role, never an account. Anything outside this set is
+ * rejected before it reaches the database.
+ */
+const demoLoginValidationSchema = z.object({
+  body: z
+    .object({
+      role: z.enum(["farmer", "expert", "admin"], {
+        required_error: "Role is required",
+        invalid_type_error: "Role must be one of: farmer, expert, admin",
+      }),
+    })
+    .strict(),
+});
+
 const refreshTokenValidationSchema = z.object({
   cookies: z.object({
     refreshToken: z.string({ required_error: "Refresh token is required!" }),
@@ -69,6 +84,7 @@ const adminResetPasswordValidationSchema = z.object({
 
 export const AuthValidation = {
   loginValidationSchema,
+  demoLoginValidationSchema,
   refreshTokenValidationSchema,
   forgotPasswordValidationSchema,
   verifyResetCodeValidationSchema,

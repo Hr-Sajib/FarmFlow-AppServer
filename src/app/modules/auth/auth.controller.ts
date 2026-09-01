@@ -39,6 +39,22 @@ const loginUser = catchAsync(async (req, res) => {
   });
 });
 
+const demoLogin = catchAsync(async (req, res) => {
+  const { refreshToken, accessToken } = await authServices.demoLoginIntoDB(
+    req.body.role
+  );
+
+  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
+  res.cookie("accessToken", accessToken, accessCookieOptions);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: `Signed in to the demo ${req.body.role} account`,
+    data: { accessToken },
+  });
+});
+
 const logout = catchAsync(async (req, res) => {
   res.clearCookie("refreshToken", { ...baseCookieOptions });
   res.clearCookie("accessToken", { ...baseCookieOptions });
@@ -123,6 +139,7 @@ const adminResetPassword = catchAsync(async (req, res) => {
 
 export const AuthController = {
   loginUser,
+  demoLogin,
   logout,
   refreshToken,
   forgotPassword,

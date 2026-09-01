@@ -36,6 +36,24 @@ router.post(
   AuthController.loginUser
 );
 
+/**
+ * Passwordless by design, so it gets its own tighter budget than /login: there
+ * is no credential to guess here, but there is still no reason for one address
+ * to open demo sessions in a loop.
+ */
+router.post(
+  "/demo-login",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 30,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { success: false, message: "Too many demo sign-ins. Try again later." },
+  }),
+  validateRequest(AuthValidation.demoLoginValidationSchema),
+  AuthController.demoLogin
+);
+
 router.post("/logout", AuthController.logout);
 
 router.post(

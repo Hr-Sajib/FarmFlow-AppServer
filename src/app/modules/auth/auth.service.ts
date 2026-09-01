@@ -62,6 +62,33 @@ const loginUserIntoDB = async (payload: TLoginUser) => {
   return issueTokens(user);
 };
 
+/**
+ * Signs into the designated demo account for a role, with no password.
+ *
+ * This exists so someone evaluating the project can see each role's view
+ * without being handed credentials. The safety of it rests on the lookup: the
+ * caller supplies a role, and the query additionally requires `isDemo`, so the
+ * endpoint can only ever reach an account that was explicitly marked as
+ * disposable. There is no code path here that accepts an email.
+ */
+const demoLoginIntoDB = async (role: "farmer" | "expert" | "admin") => {
+  const user = await UserModel.findOne({
+    role,
+    isDemo: true,
+    isDeleted: false,
+    status: "active",
+  });
+
+  if (!user) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `No demo ${role} account is available right now.`
+    );
+  }
+
+  return issueTokens(user);
+};
+
 const refreshToken = async (token: string) => {
   const decoded = verifyToken(token, config.jwt_refresh_secret as string);
 
@@ -206,6 +233,16 @@ const changePassword = async (userId: string, payload: TChangePassword) => {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
+  // A shared demo account has no single owner. Letting whoever is in it right
+  // now set a new password would lock out everyone evaluating the project
+  // afterwards, and the demo endpoint issues no password to recover with.
+  if (user.isDemo) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Demo accounts are shared, so their password cannot be changed."
+    );
+  }
+
   if (!(await bcrypt.compare(payload.oldPassword, user.password))) {
     throw new AppError(httpStatus.UNAUTHORIZED, "Current password is incorrect");
   }
@@ -235,6 +272,7 @@ const adminResetPassword = async (userId: string, newPassword: string) => {
 
 export const authServices = {
   loginUserIntoDB,
+  demoLoginIntoDB,
   refreshToken,
   forgotPassword,
   verifyResetCode,

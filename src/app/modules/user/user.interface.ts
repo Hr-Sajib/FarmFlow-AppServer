@@ -44,5 +44,12 @@ export interface IUser {
   designations?: IDesignation[];
   expertStatus?: TExpertStatus;
 
+  /**
+   * Marks an account the demo-login endpoint is allowed to sign into without a
+   * password. The endpoint matches on this flag rather than on an email from
+   * the request, so it can never be pointed at a real user's account.
+   */
+  isDemo?: boolean;
+
   isDeleted: boolean;
 }

@@ -26,7 +26,16 @@ const displayLabel = (fieldId: string): string => {
  */
 const getLatestPublicReadingFromDB =
   async (): Promise<IPublicReading | null> => {
-    const latest = await TelemetryModel.findOne()
+    // Scoped to fields that still exist. Readings can outlive their field —
+    // a device retired, or telemetry that arrived before the mapping was in
+    // place — and the landing page must not advertise a phantom greenhouse.
+    const liveFieldIds = await FieldModel.distinct("fieldId", {
+      isDeleted: false,
+    });
+
+    const latest = await TelemetryModel.findOne({
+      "meta.fieldId": { $in: liveFieldIds },
+    })
       .sort({ ts: -1 })
       .lean<{
         ts: Date;
