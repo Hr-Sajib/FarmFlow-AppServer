@@ -39,6 +39,16 @@ const getUserById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getVerifiedExperts = catchAsync(async (_req: Request, res: Response) => {
+  const experts = await userServices.getVerifiedExpertsFromDB();
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Verified experts retrieved successfully",
+    data: experts,
+  });
+});
+
 /** Identity comes from the verified token, so there is nothing to spoof. */
 const getMe = catchAsync(async (req: Request, res: Response) => {
   const user = await userServices.getMeFromDB(req.user.userId);
@@ -111,6 +121,7 @@ export const userController = {
   createUser,
   getAllUsers,
   getUserById,
+  getVerifiedExperts,
   getMe,
   updateUser,
   softDeleteUser,

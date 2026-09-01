@@ -43,6 +43,22 @@ router.patch(
   advisorySessionController.assignHumanExpert
 );
 
+// Anyone party to the conversation may close it.
+router.patch(
+  "/:sessionId/status",
+  auth("admin", "farmer", "expert"),
+  validateRequest(AdvisorySessionValidation.updateStatusValidationSchema),
+  advisorySessionController.updateStatus
+);
+
+// Only the farmer who asked rates the answer.
+router.post(
+  "/:sessionId/feedback",
+  auth("farmer"),
+  validateRequest(AdvisorySessionValidation.submitFeedbackValidationSchema),
+  advisorySessionController.submitFeedback
+);
+
 router.delete(
   "/:sessionId",
   auth("admin"),

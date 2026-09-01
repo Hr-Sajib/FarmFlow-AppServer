@@ -14,7 +14,8 @@
     "build": "tsc",
     "seed": "ts-node-dev --transpile-only src/scripts/seed.ts",
     "llm:check": "ts-node-dev --transpile-only src/scripts/llmCheck.ts",
-    "seed:telemetry": "ts-node-dev --transpile-only src/scripts/seedTelemetry.ts"
+    "seed:telemetry": "ts-node-dev --transpile-only src/scripts/seedTelemetry.ts",
+    "seed:people": "ts-node-dev --transpile-only src/scripts/devSeedPeople.ts"
   },
   "keywords": [],
   "author": "",

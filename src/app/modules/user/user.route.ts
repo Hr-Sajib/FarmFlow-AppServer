@@ -16,6 +16,13 @@ router.post(
 
 router.get("/me", auth("admin", "farmer", "expert"), userController.getMe);
 
+// Declared before "/:userId" so it is not read as an id.
+router.get(
+  "/experts",
+  auth("admin", "farmer", "expert"),
+  userController.getVerifiedExperts
+);
+
 router.get("/", auth("admin"), userController.getAllUsers);
 
 router.get("/:userId", auth("admin"), userController.getUserById);

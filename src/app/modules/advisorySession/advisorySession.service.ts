@@ -129,6 +129,56 @@ const assignExpertToSession = async (
   return updated;
 };
 
+/**
+ * Moves a session along its lifecycle. Open to the owning farmer, the assigned
+ * expert, or an admin — anyone party to the conversation can call it finished.
+ */
+const updateSessionStatus = async (
+  sessionId: string,
+  status: IAdvisorySession["status"],
+  actor: TActor
+) => {
+  const session = await getSessionOr404(sessionId);
+  assertCanViewSession(session, actor);
+
+  const updated = await AdvisorySessionModel.findByIdAndUpdate(
+    sessionId,
+    {
+      $set: {
+        status,
+        ...(status === "resolved" ? { resolvedAt: new Date() } : {}),
+      },
+    },
+    { new: true, runValidators: true }
+  );
+
+  if (!updated) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to update status");
+  }
+  return updated;
+};
+
+/** Only the farmer who asked can say whether the answer helped. */
+const submitSessionFeedback = async (
+  sessionId: string,
+  feedback: { feedbackStarCount: number; feedbackText?: string },
+  actor: TActor
+) => {
+  const session = await getSessionOr404(sessionId);
+  assertIsOwnerFarmer(session, actor);
+
+  const updated = await AdvisorySessionModel.findByIdAndUpdate(
+    sessionId,
+    { $set: feedback },
+    { new: true, runValidators: true }
+  );
+
+  if (!updated) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to save feedback");
+  }
+  return updated;
+};
+
 /** Admin only. Soft delete, so the transcript is retained. */
 const softDeleteSessionInDB = async (sessionId: string) => {
   await getSessionOr404(sessionId);
@@ -257,6 +307,8 @@ export const advisorySessionServices = {
   updateSessionData,
   assignExpertToSession,
   softDeleteSessionInDB,
+  updateSessionStatus,
+  submitSessionFeedback,
   appendMessageToSession,
   generateAiReplyForSession,
 };

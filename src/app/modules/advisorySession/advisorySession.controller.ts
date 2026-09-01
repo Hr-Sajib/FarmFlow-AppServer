@@ -82,6 +82,34 @@ const assignHumanExpert = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateStatus = catchAsync(async (req: Request, res: Response) => {
+  const session = await advisorySessionServices.updateSessionStatus(
+    req.params.sessionId,
+    req.body.status,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Session status updated",
+    data: session,
+  });
+});
+
+const submitFeedback = catchAsync(async (req: Request, res: Response) => {
+  const session = await advisorySessionServices.submitSessionFeedback(
+    req.params.sessionId,
+    req.body,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Thanks for the feedback",
+    data: session,
+  });
+});
+
 const softDeleteSession = catchAsync(async (req: Request, res: Response) => {
   const session = await advisorySessionServices.softDeleteSessionInDB(
     req.params.sessionId
@@ -100,5 +128,7 @@ export const advisorySessionController = {
   getMySessions,
   updateSession,
   assignHumanExpert,
+  updateStatus,
+  submitFeedback,
   softDeleteSession,
 };

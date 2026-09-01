@@ -44,6 +44,21 @@ const getUserByIdFromDB = async (userId: string) => {
   return user;
 };
 
+/**
+ * Verified experts, for the escalation picker.
+ *
+ * Separate from getAllUsers because that is admin-only: a farmer must be able
+ * to choose an expert without being able to list every account. Only the
+ * fields needed to pick someone are returned.
+ */
+const getVerifiedExpertsFromDB = async () =>
+  UserModel.find({
+    role: "expert",
+    expertStatus: "verified",
+    status: "active",
+    isDeleted: false,
+  }).select("fullName photo userCode designations");
+
 /** `getMe` resolves the caller from the token id — never from a URL parameter. */
 const getMeFromDB = async (userId: string) => {
   const user = await UserModel.findOne({ _id: userId, isDeleted: false });
@@ -114,6 +129,7 @@ export const userServices = {
   createUserIntoDB,
   getAllUsersFromDB,
   getUserByIdFromDB,
+  getVerifiedExpertsFromDB,
   getMeFromDB,
   updateUserData,
   softDeleteUserInDB,
