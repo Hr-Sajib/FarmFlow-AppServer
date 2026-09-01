@@ -10,6 +10,7 @@ import { PostRoutes } from "./app/modules/posts/post.route";
 import { FieldRoutes } from "./app/modules/fields/fields.route";
 import { UploadRoutes } from "./app/modules/upload/upload.route";
 import { AdvisorySessionRoutes } from "./app/modules/advisorySession/advisorySession.route";
+import { PublicRoutes } from "./app/modules/public/public.route";
 
 const app: Application = express();
 
@@ -40,6 +41,8 @@ app.use("/post", PostRoutes);
 app.use("/field", FieldRoutes);
 app.use("/upload", UploadRoutes);
 app.use("/advisory", AdvisorySessionRoutes);
+// The only routes reachable without a session; read-only and rate limited.
+app.use("/public", PublicRoutes);
 
 /**
  * =========================
