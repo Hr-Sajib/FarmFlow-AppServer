@@ -78,6 +78,17 @@ const updateUserData = async (userId: string, updates: Partial<IUser>) => {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
+  // Admins are peers. Letting one block another turns a shared role into a
+  // race over who locks the other out first, and there is no higher authority
+  // in the system to undo it. Soft delete already refuses this for the same
+  // reason; blocking is the same act by another name.
+  if (user.role === "admin" && updates.status === "blocked") {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Admin accounts cannot be blocked"
+    );
+  }
+
   if (updates.email && updates.email !== user.email) {
     const taken = await UserModel.findOne({
       email: updates.email,

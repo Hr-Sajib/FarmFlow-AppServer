@@ -22,7 +22,12 @@ const designationSchema = z
   .object({
     designationTitle: z.string().trim().min(1, "Designation title cannot be empty"),
     designatedFrom: z.string().trim().min(1, "Designating institution cannot be empty"),
-    documents: z.array(z.string().url({ message: "Each document must be a valid URL" })).default([]),
+    // Proof is the whole point of a designation. A claim with nothing attached
+    // gives the reviewing admin nothing to verify, so it is rejected at the
+    // edge rather than queued for a decision that cannot be made.
+    documents: z
+      .array(z.string().url({ message: "Each document must be a valid URL" }))
+      .min(1, "Attach at least one document supporting this designation"),
     isApproved: z.boolean().optional(), // admin-only; stripped for non-admins
   })
   .strict();
