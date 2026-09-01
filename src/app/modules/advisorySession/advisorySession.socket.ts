@@ -24,6 +24,19 @@ const messageSchema = z.object({
 const roomOf = (sessionId: string) => `session:${sessionId}`;
 
 /**
+ * Sessions currently having a reply generated.
+ *
+ * The opening reply is triggered on join, and a client can legitimately join
+ * more than once — a second tab, a reconnect, or React re-running an effect in
+ * development. Without a claim, two joins arriving together both see an empty
+ * transcript and both generate, so the farmer gets the same answer twice.
+ *
+ * In-process, which matches the single-instance deployment; a second instance
+ * would need this in Redis.
+ */
+const generating = new Set<string>();
+
+/**
  * Generates the AI turn and broadcasts it. Failures are reported to the room
  * but never rethrown: the farmer's own message is already persisted, and a
  * model outage should not look like their message was lost.
@@ -33,6 +46,10 @@ const emitAiReply = async (
   socket: Socket,
   sessionId: string
 ): Promise<void> => {
+  // Claim the session; a concurrent join simply waits for the broadcast.
+  if (generating.has(sessionId)) return;
+  generating.add(sessionId);
+
   nsp.to(roomOf(sessionId)).emit("session:ai-thinking", { sessionId });
 
   try {
@@ -54,6 +71,7 @@ const emitAiReply = async (
         error instanceof Error ? error.message : "The advisor is unavailable",
     });
   } finally {
+    generating.delete(sessionId);
     nsp.to(roomOf(sessionId)).emit("session:ai-thinking-done", { sessionId });
   }
 };
@@ -126,7 +144,7 @@ export const setupAdvisorySocket = (io: Server): void => {
         // First join of a brand-new session: the advisor opens by responding to
         // the problem statement and photographs supplied at creation.
         if (session.chatHistory.length === 0 && session.status === "ai_active") {
-          await emitAiReply(nsp, socket, parsed.data.sessionId);
+          void emitAiReply(nsp, socket, parsed.data.sessionId);
         }
       } catch (error) {
         socket.emit("session:error", {
