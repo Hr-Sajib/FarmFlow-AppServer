@@ -276,7 +276,7 @@ const generateAiReplyForSession = async (
   }
   if (session.status !== "ai_active") return null;
 
-  const prompt = buildAdvisoryPrompt(session);
+  const prompt = await buildAdvisoryPrompt(session);
 
   // Streamed when the caller supplies a chunk handler, so the socket can relay
   // tokens as they arrive; buffered otherwise.

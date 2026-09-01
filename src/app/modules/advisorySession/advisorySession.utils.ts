@@ -5,6 +5,7 @@ import { UserModel } from "../user/user.model";
 import { AdvisorySessionModel } from "./advisorySession.model";
 import { IAdvisorySession, IAdvisoryMessage, TAdvisorySenderRole } from "./advisorySession.interface";
 import { TChatMessage, TContentPart } from "../../utils/openRouter";
+import { extractKeyFromUrl, getSignedReadUrl } from "../../utils/fileUpload";
 
 /** The authenticated caller, resolved by the auth middleware or socket handshake. */
 export type TActor = {
@@ -152,12 +153,12 @@ export const transcriptWordCount = (messages: IAdvisoryMessage[]): number =>
  * The opening turn: the problem as the farmer stated it, plus any photographs
  * they attached, sent as image parts so a vision model can actually look.
  */
-export const buildInitialContext = (
+export const buildInitialContext = async (
   session: Pick<
     IAdvisorySession,
     "problemStatement" | "problemDetails" | "attachedMediaUrls" | "fieldId"
   >
-): TContentPart[] => {
+): Promise<TContentPart[]> => {
   const lines = [`Problem: ${session.problemStatement}`];
   if (session.problemDetails) lines.push(`Details: ${session.problemDetails}`);
   if (session.fieldId) lines.push(`Field reference: ${session.fieldId}`);
@@ -166,7 +167,15 @@ export const buildInitialContext = (
 
   for (const url of session.attachedMediaUrls ?? []) {
     if (IMAGE_URL_PATTERN.test(url)) {
-      parts.push({ type: "image_url", image_url: { url } });
+      const fetchable = await toFetchableImageUrl(url);
+      if (fetchable) {
+        parts.push({ type: "image_url", image_url: { url: fetchable } });
+      } else {
+        parts.push({
+          type: "text",
+          text: "The farmer attached a photograph, but it could not be made available to you. Ask them to describe what it shows.",
+        });
+      }
     } else {
       parts.push({
         type: "text",
@@ -180,15 +189,38 @@ export const buildInitialContext = (
 
 const IMAGE_URL_PATTERN = /\.(jpe?g|png|gif|webp)(\?|$)/i;
 
+/**
+ * Turns a stored attachment URL into one the model provider can actually fetch.
+ *
+ * Attachments are stored as links back to this API, which is the right thing
+ * for a browser holding a session cookie and the wrong thing for OpenRouter:
+ * it has no session, and in development the host is localhost, which it
+ * refuses outright ("Cannot fetch from private/localhost URLs"). That error
+ * failed the whole completion, so a single photograph left the conversation
+ * permanently unable to reply.
+ *
+ * A short-lived signed S3 link is fetchable by anyone holding it, for ten
+ * minutes, which is all the provider needs. If signing fails the image is
+ * dropped rather than the answer — a reply that cannot see the photo is worth
+ * more than no reply at all.
+ */
+const toFetchableImageUrl = async (url: string): Promise<string | null> => {
+  try {
+    return await getSignedReadUrl(extractKeyFromUrl(url), 600);
+  } catch {
+    return null;
+  }
+};
+
 /** One stored message rendered as a chat turn, with images passed through. */
-const toChatTurn = (message: IAdvisoryMessage): TChatMessage => {
+const toChatTurn = async (message: IAdvisoryMessage): Promise<TChatMessage> => {
   const role = message.senderRole === "ai" ? "assistant" : "user";
 
   if (message.messageType === "image") {
-    return {
-      role,
-      content: [{ type: "image_url", image_url: { url: message.messageContent } }],
-    };
+    const fetchable = await toFetchableImageUrl(message.messageContent);
+    return fetchable
+      ? { role, content: [{ type: "image_url", image_url: { url: fetchable } }] }
+      : { role, content: "[the farmer shared a photograph that could not be loaded]" };
   }
   if (message.messageType === "video") {
     // Video is stored but not sent: the model cannot watch it.
@@ -202,9 +234,9 @@ const toChatTurn = (message: IAdvisoryMessage): TChatMessage => {
  * older turns if one exists, the original problem with its photographs, then
  * the turns still held verbatim.
  */
-export const buildAdvisoryPrompt = (
+export const buildAdvisoryPrompt = async (
   session: IAdvisorySession
-): TChatMessage[] => {
+): Promise<TChatMessage[]> => {
   const messages: TChatMessage[] = [
     { role: "system", content: AGRICULTURAL_SYSTEM_PROMPT },
   ];
@@ -216,10 +248,10 @@ export const buildAdvisoryPrompt = (
     });
   }
 
-  messages.push({ role: "user", content: buildInitialContext(session) });
+  messages.push({ role: "user", content: await buildInitialContext(session) });
 
   const recent = session.chatHistory.slice(session.summarizedMessageCount ?? 0);
-  messages.push(...recent.map(toChatTurn));
+  messages.push(...(await Promise.all(recent.map(toChatTurn))));
 
   return messages;
 };
