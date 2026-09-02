@@ -1,5 +1,5 @@
 import express from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 import auth from "../../middlewares/auth";
 import validateRequest from "../../middlewares/validateRequest";
@@ -19,7 +19,13 @@ const uploadRateLimiter = rateLimit({
   limit: 50,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.userCode ?? req.ip ?? "anonymous",
+  // Falling back to req.ip raw is not enough on IPv6: a single subscriber is
+  // typically handed a whole /64, so one caller could rotate addresses and lift
+  // the limit as high as they liked. ipKeyGenerator normalises the address to
+  // its subnet, which is the unit a person actually controls. Authenticated
+  // callers are still keyed by account, which is tighter than either.
+  keyGenerator: (req) =>
+    req.user?.userCode ?? (req.ip ? ipKeyGenerator(req.ip) : "anonymous"),
   message: {
     success: false,
     message: "Too many uploads. Please try again in a few minutes.",
