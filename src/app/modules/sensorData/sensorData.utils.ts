@@ -23,8 +23,8 @@ export const rangeStart = (range: TTelemetryRange): Date =>
 
 /**
  * Bucket width chosen so any window returns roughly 100–300 points. Without
- * this a 30-day chart at one reading every five seconds would return about
- * half a million documents to draw a few hundred pixels.
+ * this a 30-day chart at one reading every two seconds would return about
+ * 1.3 million documents to draw a few hundred pixels.
  */
 export const bucketUnitFor = (
   range: TTelemetryRange

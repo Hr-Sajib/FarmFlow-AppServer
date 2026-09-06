@@ -20,6 +20,22 @@ import { ExpertStatsRoutes } from "./app/modules/expertStats/expertStats.route";
 const app: Application = express();
 
 /**
+ * One proxy hop is trusted, so `req.ip` is the visitor rather than Caddy.
+ *
+ * Without this every request arrives wearing the reverse proxy's address, and
+ * since all the rate limiters key on the IP they become a single global budget:
+ * the public telemetry allowance would be shared by every visitor at once, and
+ * one person failing logins would lock out everybody.
+ *
+ * The count is 1, not `true`. The chain is Cloudflare -> Caddy -> here, and
+ * Cloudflare appends the real client address to X-Forwarded-For after anything
+ * the client sent itself. Trusting exactly one hop makes Express skip Caddy and
+ * read that appended address; trusting more would let a caller prepend a
+ * forged entry and be billed as somebody else.
+ */
+app.set("trust proxy", 1);
+
+/**
  * The site, this API and the sensor simulator sit on three different
  * subdomains, so every browser call between them is cross-origin and carries
  * credentials. The allowlist lives in ./config/cors because the Socket.IO

@@ -98,7 +98,7 @@ expireAfterSeconds: 60 * 60 * 24 * 90,
 `metaField` carries `farmerId` / `fieldId` / `deviceId` — the tag equivalent, and
 indexed. Retention is enforced by the database rather than a cron job, and
 `$dateTrunc` aggregation downsamples for charts, because raw points at a
-five-second cadence are not something to send to a browser.
+two-second cadence are not something to send to a browser.
 
 ### Device identity resolution
 
