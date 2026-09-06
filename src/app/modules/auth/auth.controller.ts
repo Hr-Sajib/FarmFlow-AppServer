@@ -3,6 +3,7 @@ import config from "../../../config";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { authServices } from "./auth.service";
+import { routeParam } from "../../utils/routeParam";
 
 const baseCookieOptions = {
   httpOnly: true,
@@ -133,7 +134,7 @@ const changePassword = catchAsync(async (req, res) => {
 
 const adminResetPassword = catchAsync(async (req, res) => {
   const result = await authServices.adminResetPassword(
-    req.params.userId,
+    routeParam(req, "userId"),
     req.body.newPassword
   );
   sendResponse(res, {

@@ -5,6 +5,7 @@ import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { postServices } from "./post.service";
 import { TActor } from "./post.utils";
+import { routeParam } from "../../utils/routeParam";
 
 const actorOf = (req: Request): TActor => ({
   userId: req.user.userId,
@@ -53,7 +54,7 @@ const getAllPosts = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getPostById = catchAsync(async (req: Request, res: Response) => {
-  const post = await postServices.getPostByIdFromDB(req.params.postId);
+  const post = await postServices.getPostByIdFromDB(routeParam(req, "postId"));
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -64,7 +65,7 @@ const getPostById = catchAsync(async (req: Request, res: Response) => {
 
 const updatePost = catchAsync(async (req: Request, res: Response) => {
   const post = await postServices.updatePostData(
-    req.params.postId,
+    routeParam(req, "postId"),
     req.body,
     actorOf(req)
   );
@@ -78,7 +79,7 @@ const updatePost = catchAsync(async (req: Request, res: Response) => {
 
 const softDeletePost = catchAsync(async (req: Request, res: Response) => {
   const post = await postServices.softDeletePostInDB(
-    req.params.postId,
+    routeParam(req, "postId"),
     actorOf(req)
   );
   sendResponse(res, {
@@ -91,7 +92,7 @@ const softDeletePost = catchAsync(async (req: Request, res: Response) => {
 
 const setPostReaction = catchAsync(async (req: Request, res: Response) => {
   const post = await postServices.setPostReactionInDB(
-    req.params.postId,
+    routeParam(req, "postId"),
     req.body.reaction,
     actorOf(req)
   );
@@ -105,7 +106,7 @@ const setPostReaction = catchAsync(async (req: Request, res: Response) => {
 
 const removePostReaction = catchAsync(async (req: Request, res: Response) => {
   const post = await postServices.removePostReactionFromDB(
-    req.params.postId,
+    routeParam(req, "postId"),
     actorOf(req)
   );
   sendResponse(res, {
@@ -118,7 +119,7 @@ const removePostReaction = catchAsync(async (req: Request, res: Response) => {
 
 const addComment = catchAsync(async (req: Request, res: Response) => {
   const post = await postServices.addCommentIntoPost(
-    req.params.postId,
+    routeParam(req, "postId"),
     req.body,
     actorOf(req)
   );
@@ -136,7 +137,7 @@ const setPostReview = catchAsync(async (req: Request, res: Response) => {
     reviewNote?: string;
   };
   const post = await postServices.setPostReviewInDB(
-    req.params.postId,
+    routeParam(req, "postId"),
     isPassedByAI,
     reviewNote
   );

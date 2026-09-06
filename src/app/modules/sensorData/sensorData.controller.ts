@@ -6,6 +6,7 @@ import sendResponse from "../../utils/sendResponse";
 import { sensorDataServices } from "./sensorData.service";
 import { sensorDataValidations } from "./sensorData.validation";
 import { TActor, assertCanReadField, toTelemetry } from "./sensorData.utils";
+import { routeParam } from "../../utils/routeParam";
 
 const actorOf = (req: Request): TActor => ({
   userId: req.user.userId,
@@ -29,7 +30,7 @@ const createTelemetry = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getEntriesByField = catchAsync(async (req: Request, res: Response) => {
-  const { fieldId } = req.params;
+  const fieldId = routeParam(req, "fieldId");
   await assertCanReadField(fieldId, actorOf(req));
 
   const data = await sensorDataServices.getEntriesByFieldIdFromDB(
@@ -45,7 +46,7 @@ const getEntriesByField = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getRecentEntriesByField = catchAsync(async (req: Request, res: Response) => {
-  const { fieldId } = req.params;
+  const fieldId = routeParam(req, "fieldId");
   await assertCanReadField(fieldId, actorOf(req));
 
   const limit = Math.min(Number(req.query.limit) || 50, 500);
@@ -62,7 +63,7 @@ const getRecentEntriesByField = catchAsync(async (req: Request, res: Response) =
 });
 
 const getLatestByField = catchAsync(async (req: Request, res: Response) => {
-  const { fieldId } = req.params;
+  const fieldId = routeParam(req, "fieldId");
   await assertCanReadField(fieldId, actorOf(req));
 
   const data = await sensorDataServices.getLatestByFieldIdFromDB(fieldId);
@@ -77,7 +78,7 @@ const getLatestByField = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAggregatedSeries = catchAsync(async (req: Request, res: Response) => {
-  const { fieldId } = req.params;
+  const fieldId = routeParam(req, "fieldId");
   await assertCanReadField(fieldId, actorOf(req));
 
   const data = await sensorDataServices.getAggregatedSeriesFromDB(

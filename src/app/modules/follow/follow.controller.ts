@@ -7,10 +7,11 @@ import AppError from "../../errors/AppError";
 import { UserModel } from "../user/user.model";
 import { PostModel } from "../posts/post.model";
 import { followServices } from "./follow.service";
+import { routeParam } from "../../utils/routeParam";
 
 const follow = catchAsync(async (req: Request, res: Response) => {
   const data = await followServices.followUserInDB(
-    req.params.userCode,
+    routeParam(req, "userCode"),
     req.user.userCode as string
   );
   sendResponse(res, {
@@ -23,7 +24,7 @@ const follow = catchAsync(async (req: Request, res: Response) => {
 
 const unfollow = catchAsync(async (req: Request, res: Response) => {
   const data = await followServices.unfollowUserInDB(
-    req.params.userCode,
+    routeParam(req, "userCode"),
     req.user.userCode as string
   );
   sendResponse(res, {
@@ -43,7 +44,7 @@ const unfollow = catchAsync(async (req: Request, res: Response) => {
  * theirs to see, but your own is.
  */
 const getPublicProfile = catchAsync(async (req: Request, res: Response) => {
-  const { userCode } = req.params;
+  const userCode = routeParam(req, "userCode");
   const viewer = req.user;
 
   const person = await UserModel.findOne({ userCode, isDeleted: false }).select(

@@ -5,6 +5,7 @@ import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { fieldServices } from "./fields.service";
 import { TActor } from "./fields.utils";
+import { routeParam } from "../../utils/routeParam";
 
 /** Every handler resolves the caller from the verified token, never the body. */
 const actorOf = (req: Request): TActor => ({
@@ -46,7 +47,7 @@ const getMyFields = catchAsync(async (req: Request, res: Response) => {
 
 const getFieldById = catchAsync(async (req: Request, res: Response) => {
   const field = await fieldServices.getFieldByIdFromDB(
-    req.params.fieldId,
+    routeParam(req, "fieldId"),
     actorOf(req)
   );
   sendResponse(res, {
@@ -59,7 +60,7 @@ const getFieldById = catchAsync(async (req: Request, res: Response) => {
 
 const updateField = catchAsync(async (req: Request, res: Response) => {
   const updatedField = await fieldServices.updateFieldData(
-    req.params.fieldId,
+    routeParam(req, "fieldId"),
     req.body,
     actorOf(req)
   );
@@ -73,7 +74,7 @@ const updateField = catchAsync(async (req: Request, res: Response) => {
 
 const softDeleteField = catchAsync(async (req: Request, res: Response) => {
   const deletedField = await fieldServices.softDeleteFieldInDB(
-    req.params.fieldId,
+    routeParam(req, "fieldId"),
     actorOf(req)
   );
   sendResponse(res, {
@@ -86,7 +87,7 @@ const softDeleteField = catchAsync(async (req: Request, res: Response) => {
 
 const getFieldWeather = catchAsync(async (req: Request, res: Response) => {
   const weather = await fieldServices.getFieldWeather(
-    req.params.fieldId,
+    routeParam(req, "fieldId"),
     actorOf(req)
   );
   sendResponse(res, {
@@ -100,7 +101,7 @@ const getFieldWeather = catchAsync(async (req: Request, res: Response) => {
 const getFieldInsight = catchAsync(async (req: Request, res: Response) => {
   const detail = req.query.detail === "full" ? "full" : "brief";
   const insight = await fieldServices.getFieldInsight(
-    req.params.fieldId,
+    routeParam(req, "fieldId"),
     actorOf(req),
     detail
   );
@@ -114,7 +115,7 @@ const getFieldInsight = catchAsync(async (req: Request, res: Response) => {
 
 const getFieldSnapshot = catchAsync(async (req: Request, res: Response) => {
   const data = await fieldServices.getFieldSnapshot(
-    req.params.fieldId,
+    routeParam(req, "fieldId"),
     actorOf(req)
   );
   sendResponse(res, {

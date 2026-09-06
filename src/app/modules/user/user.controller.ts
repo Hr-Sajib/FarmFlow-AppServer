@@ -4,6 +4,7 @@ import httpStatus from "http-status";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import AppError from "../../errors/AppError";
+import { routeParam } from "../../utils/routeParam";
 import { userServices } from "./user.service";
 import { UPDATABLE_FIELDS } from "./user.validation";
 import { IUser, TUserRole } from "./user.interface";
@@ -30,7 +31,7 @@ const getAllUsers = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getUserById = catchAsync(async (req: Request, res: Response) => {
-  const user = await userServices.getUserByIdFromDB(req.params.userId);
+  const user = await userServices.getUserByIdFromDB(routeParam(req, "userId"));
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -68,7 +69,7 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
  *    than trusted from the request
  */
 const updateUser = catchAsync(async (req: Request, res: Response) => {
-  const { userId } = req.params;
+  const userId = routeParam(req, "userId");
   const callerRole = req.user.role as TUserRole;
   const callerId = req.user.userId;
 
@@ -108,7 +109,7 @@ const updateUser = catchAsync(async (req: Request, res: Response) => {
 });
 
 const softDeleteUser = catchAsync(async (req: Request, res: Response) => {
-  const user = await userServices.softDeleteUserInDB(req.params.userId);
+  const user = await userServices.softDeleteUserInDB(routeParam(req, "userId"));
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

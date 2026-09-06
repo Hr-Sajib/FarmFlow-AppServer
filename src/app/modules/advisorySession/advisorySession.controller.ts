@@ -5,6 +5,7 @@ import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { advisorySessionServices } from "./advisorySession.service";
 import { TActor } from "./advisorySession.utils";
+import { routeParam } from "../../utils/routeParam";
 
 const actorOf = (req: Request): TActor => ({
   userId: req.user.userId,
@@ -59,7 +60,7 @@ const getMySessions = catchAsync(async (req: Request, res: Response) => {
 
 const updateSession = catchAsync(async (req: Request, res: Response) => {
   const session = await advisorySessionServices.updateSessionData(
-    req.params.sessionId,
+    routeParam(req, "sessionId"),
     req.body,
     actorOf(req)
   );
@@ -73,7 +74,7 @@ const updateSession = catchAsync(async (req: Request, res: Response) => {
 
 const assignHumanExpert = catchAsync(async (req: Request, res: Response) => {
   const session = await advisorySessionServices.assignExpertToSession(
-    req.params.sessionId,
+    routeParam(req, "sessionId"),
     req.body.expertId,
     actorOf(req)
   );
@@ -87,7 +88,7 @@ const assignHumanExpert = catchAsync(async (req: Request, res: Response) => {
 
 const updateStatus = catchAsync(async (req: Request, res: Response) => {
   const session = await advisorySessionServices.updateSessionStatus(
-    req.params.sessionId,
+    routeParam(req, "sessionId"),
     req.body.status,
     actorOf(req)
   );
@@ -101,7 +102,7 @@ const updateStatus = catchAsync(async (req: Request, res: Response) => {
 
 const submitFeedback = catchAsync(async (req: Request, res: Response) => {
   const session = await advisorySessionServices.submitSessionFeedback(
-    req.params.sessionId,
+    routeParam(req, "sessionId"),
     req.body,
     actorOf(req)
   );
@@ -115,7 +116,7 @@ const submitFeedback = catchAsync(async (req: Request, res: Response) => {
 
 const softDeleteSession = catchAsync(async (req: Request, res: Response) => {
   const session = await advisorySessionServices.softDeleteSessionInDB(
-    req.params.sessionId
+    routeParam(req, "sessionId")
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
