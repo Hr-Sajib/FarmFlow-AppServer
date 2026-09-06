@@ -184,6 +184,7 @@ export const uploadSingleFileToS3 = async (
         Body: processed.buffer,
         ContentType: processed.mimetype,
         CacheControl: "public, max-age=31536000",
+        ACL: "public-read",
       })
     );
   } catch (error) {
@@ -196,10 +197,9 @@ export const uploadSingleFileToS3 = async (
   }
 
   return {
-    // A proxy URL rather than the direct S3 one: the bucket stays private, and
-    // a stored link keeps working because the signature is minted on request
-    // instead of being baked into the saved value.
-    url: `${config.api_origin}/upload/file/${key}`,
+    // Direct S3 public URL — the browser loads it straight from the bucket,
+    // avoiding a round-trip through this API for every image request.
+    url: `https://${bucket}.s3.${config.aws.aws_region}.amazonaws.com/${key}`,
     key,
     originalName: file.originalname,
     size: processed.buffer.length,
