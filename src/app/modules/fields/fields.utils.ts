@@ -5,6 +5,7 @@ import { UserModel } from "../user/user.model";
 import { FieldModel } from "./fields.model";
 import { TelemetryModel } from "../sensorData/sensorData.model";
 import AppError from "../../errors/AppError";
+import type { TFieldWeather } from "../../utils/openMeteo";
 
 /** The authenticated caller, resolved by the auth middleware. */
 export type TActor = {
@@ -143,9 +144,9 @@ export const getSoilProfile = async (
 export const getLatestReadingForField = async (fieldId: string) =>
   TelemetryModel.findOne({ "meta.fieldId": fieldId }).sort({ ts: -1 }).lean();
 
-const FIELD_ADVISOR_PROMPT = `You advise growers on individual fields inside a precision-farming platform. You are given one field's crop, environment, most recent sensor reading and soil profile, and you write what the grower should do about it.
+const FIELD_ADVISOR_PROMPT = `You advise growers on individual fields inside a precision-farming platform. You are given one field's crop, environment, most recent sensor reading, soil profile and short-range forecast, and you write what the grower should do about it.
 
-Lead with the action. Be quantitative — amounts, timings and thresholds, not "monitor closely". Reason from the numbers you are given and name them, so the grower can see why you concluded what you did.
+Lead with the action. Be quantitative — amounts, timings and thresholds, not "monitor closely". Reason from the numbers you are given and name them, so the grower can see why you concluded what you did. Weigh the forecast against the sensor reading rather than either alone — rain due in the next day changes an irrigation call that soil moisture alone would not.
 
 If a reading is missing, say what you would need rather than inventing it. Never invent a chemical dose; name the active ingredient and send them to the label.
 
@@ -169,6 +170,7 @@ export const buildFieldInsightPrompt = (
     lightIntensity?: number;
   } | null,
   soil: TSoilProfile,
+  weather: TFieldWeather | null,
   detail: "brief" | "full"
 ) => {
   const lines = [
@@ -193,6 +195,17 @@ export const buildFieldInsightPrompt = (
 - pH ${soil.ph.toFixed(1)}
 - Organic carbon ${soil.organicCarbon.toFixed(1)} g/kg`
       : "Soil profile unavailable for these coordinates.",
+    "",
+    weather
+      ? `Forecast at these coordinates (${weather.timezone}), next ${Math.min(3, weather.daily.length)} days:
+${weather.daily
+  .slice(0, 3)
+  .map(
+    (d) =>
+      `- ${d.date}: ${d.temperatureMin.toFixed(0)}–${d.temperatureMax.toFixed(0)}°C, ${d.precipitationProbabilityMax}% chance of rain (${d.precipitationSum.toFixed(1)}mm), ${d.description.toLowerCase()}`
+  )
+  .join("\n")}`
+      : "Forecast unavailable for these coordinates.",
     "",
     detail === "brief"
       ? "Give the single most useful action in under 60 words."

@@ -137,8 +137,9 @@ const getFieldWeather = async (fieldId: string, actor: TActor) => {
  * Field advisory: what to do about this field, right now.
  *
  * Combines the crop and environment on record, the most recent sensor reading,
- * and the SoilGrids profile for the field's coordinates. Written to be read in
- * a card, so the short form is deliberately tight.
+ * the SoilGrids profile, and the short-range forecast for the field's
+ * coordinates — so "irrigate now" can account for rain landing in six hours.
+ * Written to be read in a card, so the short form is deliberately tight.
  */
 const getFieldInsight = async (
   fieldId: string,
@@ -147,15 +148,21 @@ const getFieldInsight = async (
 ) => {
   const field = await getOwnedField(fieldId, actor);
 
-  const [latest, soil] = await Promise.all([
+  const [latest, soil, weather] = await Promise.all([
     getLatestReadingForField(field.fieldId),
     getSoilProfile(
       field.fieldLocation.latitude,
       field.fieldLocation.longitude
     ),
+    // Forecast is enriching context, like soil: an outage degrades the advice
+    // rather than failing the whole request.
+    fetchWeatherForCoordinates(
+      field.fieldLocation.latitude,
+      field.fieldLocation.longitude
+    ).catch(() => null),
   ]);
 
-  const prompt = buildFieldInsightPrompt(field, latest, soil, detail);
+  const prompt = buildFieldInsightPrompt(field, latest, soil, weather, detail);
 
   const insight = await createChatCompletion(prompt, {
     maxTokens: detail === "brief" ? 320 : 1000,
@@ -169,6 +176,9 @@ const getFieldInsight = async (
     basedOn: {
       reading: latest,
       soil,
+      weather: weather
+        ? { current: weather.current, daily: weather.daily.slice(0, 3) }
+        : null,
     },
     insight,
   };
