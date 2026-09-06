@@ -27,11 +27,15 @@ const createPostValidationSchema = z.object({
         .url({ message: "Post image must be a valid URL" })
         .trim()
         .optional(),
+      // At least one: topics are how the knowledge base is navigated, and an
+      // untagged post is findable only by someone who already knows it exists.
       postTopics: z
         .array(topicEnum)
-        .max(5, { message: "At most 5 topics per post" })
-        .default([]),
+        .min(1, { message: "Choose at least one topic" })
+        .max(5, { message: "At most 5 topics per post" }),
       region: regionEnum.optional(),
+      // Assembled by the server's snapshot endpoint and passed through intact.
+      fieldSnapshot: z.record(z.unknown()).optional(),
     })
     .strict(),
 });
@@ -41,7 +45,7 @@ const updatePostValidationSchema = z.object({
     .object({
       postText: z.string().trim().min(1).max(5000).optional(),
       postImage: z.string().url({ message: "Post image must be a valid URL" }).trim().optional(),
-      postTopics: z.array(topicEnum).max(5).optional(),
+      postTopics: z.array(topicEnum).min(1, { message: "Choose at least one topic" }).max(5).optional(),
       region: regionEnum.optional(),
     })
     .strict(),

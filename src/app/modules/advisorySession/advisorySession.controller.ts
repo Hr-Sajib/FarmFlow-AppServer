@@ -45,7 +45,10 @@ const getAllSessions = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getMySessions = catchAsync(async (req: Request, res: Response) => {
-  const sessions = await advisorySessionServices.getMySessionsFromDB(actorOf(req));
+  const sessions = await advisorySessionServices.getMySessionsFromDB(
+    actorOf(req),
+    (req.query.searchTerm as string | undefined) || undefined
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

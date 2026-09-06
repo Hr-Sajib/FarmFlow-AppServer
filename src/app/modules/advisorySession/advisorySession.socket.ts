@@ -17,8 +17,8 @@ const joinSchema = z.object({
 
 const messageSchema = z.object({
   sessionId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid session id"),
-  messageType: z.enum(["text", "image", "video"]).default("text"),
-  messageContent: z.string().trim().min(1).max(5000),
+  messageType: z.enum(["text", "image", "video", "snapshot"]).default("text"),
+  messageContent: z.string().trim().min(1).max(20000),
 });
 
 const roomOf = (sessionId: string) => `session:${sessionId}`;

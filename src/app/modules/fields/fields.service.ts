@@ -174,7 +174,55 @@ const getFieldInsight = async (
   };
 };
 
+/**
+ * Everything about a field at one instant, for attaching to a conversation or
+ * a post.
+ *
+ * Assembled server-side and stored as a value, not as a reference: an advisory
+ * thread read six months later should show the readings the farmer was looking
+ * at when they asked, not today's. A live lookup would quietly rewrite the
+ * question's context.
+ */
+const getFieldSnapshot = async (fieldId: string, actor: TActor) => {
+  const field = await getOwnedField(fieldId, actor);
+
+  const [reading, soil, weather] = await Promise.all([
+    getLatestReadingForField(field.fieldId),
+    getSoilProfile(field.fieldLocation.latitude, field.fieldLocation.longitude),
+    fetchWeatherForCoordinates(
+      field.fieldLocation.latitude,
+      field.fieldLocation.longitude
+    ).catch(() => null),
+  ]);
+
+  return {
+    capturedAt: new Date().toISOString(),
+    field: {
+      fieldId: field.fieldId,
+      fieldName: field.fieldName,
+      fieldCrop: field.fieldCrop,
+      environmentType: field.environmentType,
+      soilType: field.soilType,
+      fieldSizeInAcres: field.fieldSizeInAcres,
+      region: field.region,
+      location: field.fieldLocation,
+    },
+    reading,
+    soil,
+    weather: weather
+      ? {
+          current: weather.current,
+          units: weather.units,
+          timezone: weather.timezone,
+          // Three days is what fits a card without it becoming a forecast app.
+          daily: (weather.daily ?? []).slice(0, 3),
+        }
+      : null,
+  };
+};
+
 export const fieldServices = {
+  getFieldSnapshot,
   createFieldIntoDB,
   getAllFieldsFromDB,
   getMyFieldsFromDB,

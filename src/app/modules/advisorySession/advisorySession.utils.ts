@@ -222,6 +222,34 @@ const toChatTurn = async (message: IAdvisoryMessage): Promise<TChatMessage> => {
       ? { role, content: [{ type: "image_url", image_url: { url: fetchable } }] }
       : { role, content: "[the farmer shared a photograph that could not be loaded]" };
   }
+  if (message.messageType === "snapshot") {
+    // Rendered as readable lines rather than passed through as JSON: the model
+    // reasons about "soil moisture 31%", not about a serialised object.
+    try {
+      const snap = JSON.parse(message.messageContent) as {
+        field?: { fieldName?: string; fieldCrop?: string; environmentType?: string };
+        reading?: Record<string, number | undefined>;
+        weather?: { current?: { description?: string; temperature?: number } };
+      };
+      const r = snap.reading ?? {};
+      return {
+        role,
+        content: [
+          `The farmer attached a snapshot of "${snap.field?.fieldName ?? "a field"}"`,
+          `Crop: ${snap.field?.fieldCrop ?? "unknown"} (${snap.field?.environmentType ?? "unknown"})`,
+          `Latest reading — temperature ${r.temperature ?? "?"}C, humidity ${r.humidity ?? "?"}%, soil moisture ${r.soilMoisture ?? "?"}%, light ${r.lightIntensity ?? "?"} lux`,
+          snap.weather?.current
+            ? `Outside: ${snap.weather.current.description}, ${snap.weather.current.temperature}C`
+            : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      };
+    } catch {
+      return { role, content: "[the farmer attached a field snapshot]" };
+    }
+  }
+
   if (message.messageType === "video") {
     // Video is stored but not sent: the model cannot watch it.
     return { role, content: `[the farmer shared a video: ${message.messageContent}]` };

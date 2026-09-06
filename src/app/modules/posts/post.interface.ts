@@ -90,9 +90,33 @@ export interface IPost {
   reactions: TReaction;
   comments: TComment[];
 
+  /**
+   * Verdict from the automated review.
+   *
+   * Three states, and the third is the absence of the field: undefined means
+   * the review has not returned yet, true means published, false means held
+   * back. A boolean defaulting to false could not tell "waiting" from
+   * "rejected", and those need different words on screen.
+   */
+  /**
+   * A field as it was when the post was written, stored by value. Not a
+   * reference to the field: the readings that prompted the question are the
+   * point, and they would be gone by the time anyone answered.
+   */
+  fieldSnapshot?: Record<string, unknown>;
+
+  isPassedByAI?: boolean;
+  /** Why the review rejected it, shown to the author so they can fix it. */
+  reviewNote?: string;
+  reviewedAt?: Date;
+
   // Knowledge-base behaviour: a thread is a question until an answer is accepted.
   isResolved: boolean;
   acceptedCommentId?: Types.ObjectId;
 
   isDeleted: boolean;
+
+  // Written by mongoose; the feed cursor is built from createdAt.
+  createdAt?: Date;
+  updatedAt?: Date;
 }

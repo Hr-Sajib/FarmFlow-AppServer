@@ -1,5 +1,10 @@
 export type TAdvisorySenderRole = "farmer" | "expert" | "ai";
-export type TAdvisoryMessageType = "text" | "image" | "video";
+/**
+ * `snapshot` carries a captured field as JSON in messageContent. It is a
+ * message type rather than a field on the session because a farmer may attach
+ * several over a conversation, and each belongs at the point it was sent.
+ */
+export type TAdvisoryMessageType = "text" | "image" | "video" | "snapshot";
 
 /**
  * Lifecycle of one advisory thread. A single enum rather than the

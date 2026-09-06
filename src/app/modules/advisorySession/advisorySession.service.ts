@@ -53,19 +53,30 @@ const getAllSessionsFromDB = async (filters: {
  * Scoped to the caller: a farmer sees the sessions they opened, an expert the
  * ones assigned to them, an admin everything.
  */
-const getMySessionsFromDB = async (actor: TActor) => {
-  if (isAdmin(actor)) {
-    return AdvisorySessionModel.find({ isDeleted: false }).sort({ createdAt: -1 });
-  }
-
-  const query =
-    actor.role === "expert"
+const getMySessionsFromDB = async (actor: TActor, searchTerm?: string) => {
+  const scope = isAdmin(actor)
+    ? {}
+    : actor.role === "expert"
       ? { expertId: actor.userCode }
       : { farmerId: actor.userCode };
 
-  return AdvisorySessionModel.find({ ...query, isDeleted: false }).sort({
-    createdAt: -1,
-  });
+  const query: Record<string, unknown> = { ...scope, isDeleted: false };
+
+  if (searchTerm) {
+    // Escaped, so a farmer searching for "leaf (yellow)" is searching for that
+    // text and not writing a pattern by accident.
+    const safe = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const term = new RegExp(safe, "i");
+    // Matches the message bodies too: people remember what was said in a
+    // thread more often than they remember what they titled it.
+    query.$or = [
+      { problemStatement: term },
+      { problemDetails: term },
+      { "chatHistory.messageContent": term },
+    ];
+  }
+
+  return AdvisorySessionModel.find(query).sort({ createdAt: -1 });
 };
 
 /** Used by the REST reads and by the socket to authorise a join. */

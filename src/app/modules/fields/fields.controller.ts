@@ -112,7 +112,21 @@ const getFieldInsight = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getFieldSnapshot = catchAsync(async (req: Request, res: Response) => {
+  const data = await fieldServices.getFieldSnapshot(
+    req.params.fieldId,
+    actorOf(req)
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Field snapshot captured successfully",
+    data,
+  });
+});
+
 export const fieldController = {
+  getFieldSnapshot,
   createField,
   getAllFields,
   getMyFields,

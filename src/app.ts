@@ -12,6 +12,8 @@ import { UploadRoutes } from "./app/modules/upload/upload.route";
 import { AdvisorySessionRoutes } from "./app/modules/advisorySession/advisorySession.route";
 import { PublicRoutes } from "./app/modules/public/public.route";
 import { AdminStatsRoutes } from "./app/modules/adminStats/adminStats.route";
+import { FollowRoutes } from "./app/modules/follow/follow.route";
+import { ExpertStatsRoutes } from "./app/modules/expertStats/expertStats.route";
 
 const app: Application = express();
 
@@ -45,6 +47,9 @@ app.use("/advisory", AdvisorySessionRoutes);
 // The only routes reachable without a session; read-only and rate limited.
 app.use("/public", PublicRoutes);
 app.use("/admin", AdminStatsRoutes);
+// Profiles and the follow graph, keyed by userCode.
+app.use("/people", FollowRoutes);
+app.use("/expert", ExpertStatsRoutes);
 
 /**
  * =========================

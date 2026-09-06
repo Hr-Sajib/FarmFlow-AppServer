@@ -15,8 +15,8 @@ const advisoryMessageSchema = new Schema<IAdvisoryMessage>(
     messageType: {
       type: String,
       enum: {
-        values: ["text", "image", "video"],
-        message: "Message type must be one of: text, image, video",
+        values: ["text", "image", "video", "snapshot"],
+        message: "Message type must be one of: text, image, video, snapshot",
       },
       default: "text",
     },

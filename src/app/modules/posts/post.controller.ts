@@ -23,12 +23,27 @@ const createPost = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllPosts = catchAsync(async (req: Request, res: Response) => {
-  const { topic, region, creatorId } = req.query as {
-    topic?: string;
-    region?: string;
-    creatorId?: string;
-  };
-  const posts = await postServices.getAllPostsFromDB({ topic, region, creatorId });
+  const { topic, topics, region, creatorId, searchTerm, cursor, limit } =
+    req.query as Record<string, string | undefined>;
+
+  // `topic` stays accepted so existing links keep working; `topics` is the
+  // comma-separated form the tag filter sends.
+  const selected = (topics ?? topic ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const posts = await postServices.getAllPostsFromDB(
+    {
+      topics: selected,
+      region,
+      creatorId,
+      searchTerm,
+      cursor,
+      limit: limit ? Number(limit) : undefined,
+    },
+    actorOf(req)
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -115,7 +130,26 @@ const addComment = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const setPostReview = catchAsync(async (req: Request, res: Response) => {
+  const { isPassedByAI, reviewNote } = req.body as {
+    isPassedByAI: boolean;
+    reviewNote?: string;
+  };
+  const post = await postServices.setPostReviewInDB(
+    req.params.postId,
+    isPassedByAI,
+    reviewNote
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: isPassedByAI ? "Post published" : "Post held back",
+    data: post,
+  });
+});
+
 export const postController = {
+  setPostReview,
   createPost,
   getAllPosts,
   getPostById,

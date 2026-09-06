@@ -52,4 +52,8 @@ export interface IUser {
   isDemo?: boolean;
 
   isDeleted: boolean;
+
+  // Written by mongoose; a profile shows when someone joined.
+  createdAt?: Date;
+  updatedAt?: Date;
 }

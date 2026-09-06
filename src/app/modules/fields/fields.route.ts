@@ -35,6 +35,13 @@ router.patch(
 router.delete("/:fieldId", auth("admin", "farmer"), fieldController.softDeleteField);
 
 // Current conditions and 7-day forecast for the field's coordinates.
+// A point-in-time capture for attaching to a conversation or a post.
+router.get(
+  "/:fieldId/snapshot",
+  auth("admin", "farmer"),
+  fieldController.getFieldSnapshot
+);
+
 router.get(
   "/:fieldId/weather",
   auth("admin", "farmer"),

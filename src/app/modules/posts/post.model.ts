@@ -89,6 +89,13 @@ const postSchema = new Schema<IPost>(
     isResolved: { type: Boolean, default: false },
     acceptedCommentId: { type: Schema.Types.ObjectId },
 
+    fieldSnapshot: { type: Schema.Types.Mixed },
+
+    // Left unset on create: undefined is "in review".
+    isPassedByAI: { type: Boolean },
+    reviewNote: { type: String, trim: true },
+    reviewedAt: { type: Date },
+
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }

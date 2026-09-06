@@ -3,6 +3,7 @@ import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
 import { IPost, TComment, TReactionType } from "./post.interface";
 import { PostModel } from "./post.model";
+import { reviewPost } from "./post.moderation";
 import {
   TActor,
   getPostOr404,
@@ -17,25 +18,94 @@ const createPostIntoDB = async (postData: Partial<IPost>, actor: TActor) => {
     postImage: postData.postImage,
     postTopics: postData.postTopics ?? [],
     region: postData.region,
+    fieldSnapshot: postData.fieldSnapshot,
     // Author and role come from the token, never the body.
     creatorId: actor.userId,
     creatorRole: actor.role,
   });
 
+  // Reviewed after the write, not before it: the author's post is saved
+  // whatever the model does, and the review only decides who else can see it.
+  void reviewPost(created._id.toString());
+
   return created.populate(POST_POPULATE);
 };
 
-const getAllPostsFromDB = async (filters: {
-  topic?: string;
-  region?: string;
-  creatorId?: string;
-}) => {
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 30;
+
+/**
+ * One page of the feed.
+ *
+ * Paged by a cursor rather than by skip: the feed is ordered newest first and
+ * grows at the head, so an offset shifts under the reader between requests and
+ * duplicates or drops a post. `createdAt` alone is not unique enough at second
+ * resolution, so the cursor is the pair (createdAt, _id).
+ *
+ * Visibility is applied here rather than in the controller because it is the
+ * one rule the whole feed depends on: a post that has not passed review is
+ * visible to its author and to an admin, and to nobody else.
+ */
+const getAllPostsFromDB = async (
+  filters: {
+    topics?: string[];
+    region?: string;
+    creatorId?: string;
+    searchTerm?: string;
+    cursor?: string;
+    limit?: number;
+  },
+  actor: TActor
+) => {
+  const limit = Math.min(Math.max(filters.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
+
   const query: Record<string, unknown> = { isDeleted: false };
-  if (filters.topic) query.postTopics = filters.topic;
+
+  if (filters.topics?.length) query.postTopics = { $all: filters.topics };
   if (filters.region) query.region = filters.region;
   if (filters.creatorId) query.creatorId = filters.creatorId;
 
-  return PostModel.find(query).populate(POST_POPULATE).sort({ createdAt: -1 });
+  if (actor.role !== "admin") {
+    query.$or = [{ isPassedByAI: true }, { creatorId: actor.userId }];
+  }
+
+  if (filters.searchTerm) {
+    // Escaped: a searching farmer types "(" as a bracket, not as a group.
+    const safe = filters.searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const term = new RegExp(safe, "i");
+    const textMatch = { $or: [{ postText: term }, { postTopics: term }] };
+    query.$and = [...((query.$and as unknown[]) ?? []), textMatch];
+  }
+
+  if (filters.cursor) {
+    const [ts, id] = filters.cursor.split("_");
+    const at = new Date(ts);
+    if (!Number.isNaN(at.getTime())) {
+      const before = {
+        $or: [{ createdAt: { $lt: at } }, { createdAt: at, _id: { $lt: id } }],
+      };
+      query.$and = [...((query.$and as unknown[]) ?? []), before];
+    }
+  }
+
+  // One more than asked for, so "is there another page" needs no second query.
+  const rows = await PostModel.find(query)
+    .populate(POST_POPULATE)
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(limit + 1);
+
+  const hasMore = rows.length > limit;
+  const posts = hasMore ? rows.slice(0, limit) : rows;
+  const last = posts[posts.length - 1];
+
+  return {
+    posts,
+    hasMore,
+    nextCursor:
+      hasMore && last?.createdAt
+        ? `${last.createdAt.toISOString()}_${last._id}`
+        : null,
+  };
 };
 
 const getPostByIdFromDB = async (postId: string) => {
@@ -159,7 +229,35 @@ const addCommentIntoPost = async (
   return updated;
 };
 
+/**
+ * An admin's decision on a post the automated review got wrong.
+ *
+ * Kept separate from updatePostData, which is author-only and about content:
+ * this changes who can see a post, not what it says, and only an admin may do
+ * it. Recorded the same way the model's own verdict is, so nothing downstream
+ * has to know which of the two decided.
+ */
+const setPostReviewInDB = async (
+  postId: string,
+  passed: boolean,
+  note?: string
+) => {
+  const updated = await PostModel.findOneAndUpdate(
+    { _id: postId, isDeleted: false },
+    {
+      isPassedByAI: passed,
+      reviewNote: passed ? undefined : (note ?? "Held back by a moderator."),
+      reviewedAt: new Date(),
+    },
+    { new: true }
+  ).populate(POST_POPULATE);
+
+  if (!updated) throw new AppError(httpStatus.NOT_FOUND, "Post not found");
+  return updated;
+};
+
 export const postServices = {
+  setPostReviewInDB,
   createPostIntoDB,
   getAllPostsFromDB,
   getPostByIdFromDB,

@@ -33,6 +33,9 @@ router.patch(
 // Author or admin.
 router.delete("/:postId", anyRole, postController.softDeletePost);
 
+// Overrides the automated verdict. Admin only — it decides visibility.
+router.patch("/:postId/review", auth("admin"), postController.setPostReview);
+
 // Set or switch a reaction; DELETE clears it.
 router.post(
   "/:postId/react",
