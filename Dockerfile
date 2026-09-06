@@ -1,33 +1,33 @@
-# Use official Node.js LTS image
-FROM node:20-alpine AS builder
+# syntax=docker/dockerfile:1
 
-# Set working directory
+FROM node:20-alpine AS deps
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy source files
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Build TypeScript project
 RUN npm run build
 
-# Production image
 FROM node:20-alpine AS runner
-
 WORKDIR /app
+ENV NODE_ENV=production
 
-# Copy built files and dependencies
+# sharp needs the shared libvips at runtime; the alpine build links against it.
+RUN apk add --no-cache vips-dev >/dev/null 2>&1 || true
+
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser --system --uid 1001 farmflow
+
+# Production dependencies only — the build's devDependencies do not ship.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
 
-# Expose port
-EXPOSE 5000
+USER farmflow
+EXPOSE 5002
 
-# Start server in production
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/server.js"]

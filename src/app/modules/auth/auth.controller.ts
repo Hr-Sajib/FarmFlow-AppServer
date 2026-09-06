@@ -8,6 +8,13 @@ const baseCookieOptions = {
   httpOnly: true,
   secure: config.NODE_ENV === "production",
   sameSite: config.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
+  /**
+   * Scoped to the parent domain when one is configured, so the session is
+   * readable from the site as well as from this API. They are sibling
+   * subdomains in production; without this the cookie is host-only to the API
+   * and the frontend's server-side rendering sees no session at all.
+   */
+  ...(config.cookie_domain ? { domain: config.cookie_domain } : {}),
 };
 
 const refreshCookieOptions = {

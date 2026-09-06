@@ -31,6 +31,26 @@ export default {
 
   api_origin: process.env.API_ORIGIN || `http://localhost:${process.env.PORT || 5002}`,
 
+  /**
+   * Parent domain the session cookies are scoped to, e.g. ".example.com".
+   *
+   * Needed when the API and the site sit on sibling subdomains: a host-only
+   * cookie set by the API is never sent to the site's own origin, so the
+   * frontend's server-side rendering would see no session at all and bounce
+   * every request to the login page. Unset in development, where both run on
+   * localhost and cookies already ignore the port.
+   */
+  cookie_domain: process.env.COOKIE_DOMAIN,
+
+  /**
+   * Origins allowed to call this API with credentials, comma separated.
+   * Empty means reflect whatever asked, which is only acceptable locally.
+   */
+  cors_origins: (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+
   client_origin: process.env.CLIENT_ORIGIN || 'http://localhost:3002',
 
   admin_email: process.env.ADMIN_EMAIL,

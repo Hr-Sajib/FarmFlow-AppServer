@@ -2,6 +2,8 @@ import express, { Application, Request, Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
+import config from "./config";
+
 import globalErrorHandler from "./app/middlewares/globalErrorhandler";
 import { UserRoutes } from "./app/modules/user/user.route";
 import { AuthRoutes } from "./app/modules/auth/auth.route";
@@ -18,14 +20,16 @@ import { ExpertStatsRoutes } from "./app/modules/expertStats/expertStats.route";
 const app: Application = express();
 
 /**
- * =========================
- * 🌍 OPEN CORS (NO CRASH)
- * =========================
+ * The site, this API and the sensor simulator sit on three different
+ * subdomains, so every browser call between them is cross-origin and carries
+ * credentials. CORS_ORIGINS names the ones allowed; with it unset the previous
+ * reflect-anything behaviour remains, which is fine on localhost and is why
+ * development needs no configuration.
  */
 app.use(
   cors({
-    origin: true, // ✅ allow ANY origin dynamically
-    credentials: true, // keep working auth
+    origin: config.cors_origins.length ? config.cors_origins : true,
+    credentials: true,
   })
 );
 
