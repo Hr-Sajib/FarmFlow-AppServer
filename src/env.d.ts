@@ -16,7 +16,6 @@ declare namespace NodeJS {
     ADVISORY_CONTEXT_WORD_LIMIT?: string;
     ADVISORY_KEEP_RECENT?: string;
     API_ORIGIN?: string;
-    CLIENT_ORIGIN?: string;
     ADMIN_EMAIL?: string;
     ADMIN_PASSWORD?: string;
     ADMIN_NAME?: string;

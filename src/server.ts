@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from "socket.io";
 import mongoose from "mongoose";
 import app from "./app";
 import config from "./config";
+import { corsOptions } from "./config/cors";
 import { setupAdvisorySocket } from "./app/modules/advisorySession/advisorySession.socket";
 import { setupTelemetrySocket } from "./app/socket/telemetrySocket";
 import { initializeMqttClient } from "./app/modules/sensorData/mqtt.service";
@@ -11,10 +12,9 @@ import { seedAdmin } from "./app/utils/seedAdmin";
 
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer, {
-  cors: {
-    origin: config.client_origin, // Next.js frontend
-    methods: ["GET", "POST"],
-  },
+  // Same allowlist the HTTP layer uses, so a live origin can never be accepted
+  // for requests but refused for the websocket upgrade.
+  cors: { ...corsOptions, methods: ["GET", "POST"] },
 });
 
 // Setup chat-specific Socket.IO logic

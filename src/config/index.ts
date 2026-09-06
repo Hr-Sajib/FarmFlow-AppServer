@@ -51,8 +51,6 @@ export default {
     .map((origin) => origin.trim())
     .filter(Boolean),
 
-  client_origin: process.env.CLIENT_ORIGIN || 'http://localhost:3002',
-
   admin_email: process.env.ADMIN_EMAIL,
   admin_password: process.env.ADMIN_PASSWORD,
   admin_name: process.env.ADMIN_NAME || 'FarmFlow Admin',

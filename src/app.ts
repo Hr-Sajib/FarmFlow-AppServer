@@ -1,8 +1,8 @@
 import express, { Application, Request, Response } from "express";
 import cors from "cors";
+import { corsOptions } from "./config/cors";
 import cookieParser from "cookie-parser";
 
-import config from "./config";
 
 import globalErrorHandler from "./app/middlewares/globalErrorhandler";
 import { UserRoutes } from "./app/modules/user/user.route";
@@ -22,16 +22,10 @@ const app: Application = express();
 /**
  * The site, this API and the sensor simulator sit on three different
  * subdomains, so every browser call between them is cross-origin and carries
- * credentials. CORS_ORIGINS names the ones allowed; with it unset the previous
- * reflect-anything behaviour remains, which is fine on localhost and is why
- * development needs no configuration.
+ * credentials. The allowlist lives in ./config/cors because the Socket.IO
+ * handshake has to enforce exactly the same one.
  */
-app.use(
-  cors({
-    origin: config.cors_origins.length ? config.cors_origins : true,
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(cookieParser());
