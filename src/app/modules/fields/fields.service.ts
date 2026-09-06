@@ -14,6 +14,7 @@ import {
   getSoilProfile,
   getLatestReadingForField,
   buildFieldInsightPrompt,
+  fetchSoilProfileForField,
 } from "./fields.utils";
 import { fetchWeatherForCoordinates } from "../../utils/openMeteo";
 import { createChatCompletion } from "../../utils/openRouter";
@@ -43,6 +44,10 @@ const createFieldIntoDB = async (fieldData: IField, actor: TActor) => {
   }
 
   fieldData.fieldId = await generateFieldId();
+
+  // Fetched once here rather than lazily on the detail page, so the soil
+  // profile is already on the document the first time anyone reads it.
+  fieldData.soilProfile = await fetchSoilProfileForField(fieldData.fieldLocation);
 
   return FieldModel.create(fieldData);
 };
@@ -82,6 +87,13 @@ const updateFieldData = async (
       );
     }
     await assertFarmerExists(fieldData.farmerId);
+  }
+
+  // Coordinates moved (or were set for the first time on a field created
+  // before this existed) — the stored soil profile is geology at a point, so
+  // it goes stale the moment the point does.
+  if (fieldData.fieldLocation) {
+    fieldData.soilProfile = await fetchSoilProfileForField(fieldData.fieldLocation);
   }
 
   const updated = await FieldModel.findOneAndUpdate(

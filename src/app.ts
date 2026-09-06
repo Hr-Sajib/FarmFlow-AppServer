@@ -16,6 +16,7 @@ import { PublicRoutes } from "./app/modules/public/public.route";
 import { AdminStatsRoutes } from "./app/modules/adminStats/adminStats.route";
 import { FollowRoutes } from "./app/modules/follow/follow.route";
 import { ExpertStatsRoutes } from "./app/modules/expertStats/expertStats.route";
+import { FarmerStatsRoutes } from "./app/modules/farmerStats/farmerStats.route";
 
 const app: Application = express();
 
@@ -64,6 +65,7 @@ app.use("/admin", AdminStatsRoutes);
 // Profiles and the follow graph, keyed by userCode.
 app.use("/people", FollowRoutes);
 app.use("/expert", ExpertStatsRoutes);
+app.use("/farmer", FarmerStatsRoutes);
 
 /**
  * =========================

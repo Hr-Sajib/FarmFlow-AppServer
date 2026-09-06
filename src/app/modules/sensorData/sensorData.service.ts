@@ -67,23 +67,18 @@ const getLatestByFieldIdFromDB = async (
   TelemetryModel.findOne({ "meta.fieldId": fieldId }).sort({ ts: -1 }).lean();
 
 /**
- * Downsampled series for charts: readings are grouped into fixed time buckets
- * and averaged, so a window returns a few hundred points instead of the raw
- * hundreds of thousands.
+ * Downsampled series for charts, shared by "one field" and "everything one
+ * farmer owns" — the only difference between the two is which field of the
+ * match stage narrows the readings.
  */
-const getAggregatedSeriesFromDB = async (
-  fieldId: string,
-  range: TTelemetryRange = "24h"
+const aggregateSeries = async (
+  match: Record<string, unknown>,
+  range: TTelemetryRange
 ): Promise<ITelemetryBucket[]> => {
   const { unit, binSize } = bucketUnitFor(range);
 
   return TelemetryModel.aggregate<ITelemetryBucket>([
-    {
-      $match: {
-        "meta.fieldId": fieldId,
-        ts: { $gte: rangeStart(range) },
-      },
-    },
+    { $match: { ...match, ts: { $gte: rangeStart(range) } } },
     {
       $group: {
         _id: { $dateTrunc: { date: "$ts", unit, binSize } },
@@ -111,10 +106,48 @@ const getAggregatedSeriesFromDB = async (
   ]);
 };
 
+/**
+ * Downsampled series for charts: readings are grouped into fixed time buckets
+ * and averaged, so a window returns a few hundred points instead of the raw
+ * hundreds of thousands.
+ */
+const getAggregatedSeriesFromDB = (
+  fieldId: string,
+  range: TTelemetryRange = "24h"
+): Promise<ITelemetryBucket[]> =>
+  aggregateSeries({ "meta.fieldId": fieldId }, range);
+
+/**
+ * The same downsampling, averaged across every field a farmer owns — one
+ * trend line for "the farm", for an overview that isn't about any one field.
+ */
+const getAggregatedSeriesForFarmerFromDB = (
+  farmerId: string,
+  range: TTelemetryRange = "24h"
+): Promise<ITelemetryBucket[]> =>
+  aggregateSeries({ "meta.farmerId": farmerId }, range);
+
+/**
+ * Latest reading per field for everything one farmer owns, in one query
+ * instead of one round trip per field.
+ */
+const getLatestByFarmerIdFromDB = async (
+  farmerId: string
+): Promise<ITelemetry[]> => {
+  const rows = await TelemetryModel.aggregate<{ _id: string; doc: ITelemetry }>([
+    { $match: { "meta.farmerId": farmerId } },
+    { $sort: { ts: -1 } },
+    { $group: { _id: "$meta.fieldId", doc: { $first: "$$ROOT" } } },
+  ]);
+  return rows.map((r) => r.doc);
+};
+
 export const sensorDataServices = {
   createTelemetryIntoDB,
   getEntriesByFieldIdFromDB,
   getRecentEntriesByFieldIdFromDB,
   getLatestByFieldIdFromDB,
   getAggregatedSeriesFromDB,
+  getAggregatedSeriesForFarmerFromDB,
+  getLatestByFarmerIdFromDB,
 };

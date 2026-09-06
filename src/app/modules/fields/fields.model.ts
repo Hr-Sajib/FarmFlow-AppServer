@@ -16,6 +16,20 @@ const fieldLocationSchema = new Schema<IField["fieldLocation"]>(
   { _id: false }
 );
 
+// Composition at the field's coordinates, from ISRIC SoilGrids. Absent (not
+// zeroed) when the grid has no coverage for that point, or the lookup failed.
+const soilProfileSchema = new Schema(
+  {
+    clay: { type: Number, required: true },
+    silt: { type: Number, required: true },
+    sand: { type: Number, required: true },
+    ph: { type: Number, required: true },
+    organicCarbon: { type: Number, required: true },
+    fetchedAt: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
 // Define the Field schema
 const fieldSchema = new Schema<IField>(
   {
@@ -58,6 +72,12 @@ const fieldSchema = new Schema<IField>(
         values: ["clay", "loam", "sandy", "silt", "peat", "chalk", "saline"],
         message: "Soil type must be one of: clay, loam, sandy, silt, peat, chalk, saline",
       },
+    },
+    // Absent rather than defaulted: SoilGrids has genuine coverage gaps, and a
+    // missing profile must read as "unknown", not as zeroed-out values.
+    soilProfile: {
+      type: soilProfileSchema,
+      default: null,
     },
     environmentType: {
       type: String,

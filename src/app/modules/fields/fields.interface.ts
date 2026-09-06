@@ -10,6 +10,21 @@ export type TSoilType =
 export type TFieldStatus = "active" | "inactive" | "maintenance";
 
 /**
+ * Soil composition for this field's coordinates, from ISRIC SoilGrids.
+ * Fetched once when the location is set and re-fetched only when it moves —
+ * not on every read — so the field detail page can show it without waiting
+ * on an external call.
+ */
+export interface IFieldSoilProfile {
+  clay: number;
+  silt: number;
+  sand: number;
+  ph: number;
+  organicCarbon: number;
+  fetchedAt: Date;
+}
+
+/**
  * Controlled environments are the platform's primary target: they are where
  * sensor→actuator loops actually close, and where high-value crops justify
  * the hardware.
@@ -27,6 +42,8 @@ export interface IField {
   };
   fieldSizeInAcres?: number;
   soilType?: TSoilType;
+  /** Server-computed from fieldLocation; never accepted from client input. */
+  soilProfile?: IFieldSoilProfile | null;
   environmentType: TEnvironmentType;
 
   farmerId: string; // userCode of the owning farmer

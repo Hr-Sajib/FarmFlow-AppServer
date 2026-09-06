@@ -6,6 +6,7 @@ import { FieldModel } from "./fields.model";
 import { TelemetryModel } from "../sensorData/sensorData.model";
 import AppError from "../../errors/AppError";
 import type { TFieldWeather } from "../../utils/openMeteo";
+import type { IFieldSoilProfile } from "./fields.interface";
 
 /** The authenticated caller, resolved by the auth middleware. */
 export type TActor = {
@@ -138,6 +139,19 @@ export const getSoilProfile = async (
     soilCache.set(key, null);
     return null;
   }
+};
+
+/**
+ * Soil profile to persist on the field document itself, stamped with when it
+ * was fetched. Called only when a field's coordinates are set or changed —
+ * not on every read — so the detail page can show soil composition without
+ * an external call in its critical path.
+ */
+export const fetchSoilProfileForField = async (
+  location: { latitude: number; longitude: number }
+): Promise<IFieldSoilProfile | null> => {
+  const soil = await getSoilProfile(location.latitude, location.longitude);
+  return soil ? { ...soil, fetchedAt: new Date() } : null;
 };
 
 /** Most recent stored reading, used as the "now" the advice is written against. */
