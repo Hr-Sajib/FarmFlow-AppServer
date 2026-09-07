@@ -20,7 +20,8 @@
     "link:device": "ts-node-dev --transpile-only src/scripts/linkDevice.ts",
     "seed:showcase": "ts-node-dev --transpile-only src/scripts/seedShowcase.ts",
     "seed:images": "ts-node-dev --transpile-only src/scripts/pickSeedImages.ts",
-    "review:pending": "ts-node-dev --transpile-only src/scripts/reviewPending.ts"
+    "review:pending": "ts-node-dev --transpile-only src/scripts/reviewPending.ts",
+    "backfill:soil": "ts-node-dev --transpile-only src/scripts/backfillSoilProfiles.ts"
   },
   "keywords": [],
   "author": "",
